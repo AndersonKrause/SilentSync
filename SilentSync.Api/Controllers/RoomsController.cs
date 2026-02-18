@@ -13,7 +13,9 @@ public class RoomsController : ControllerBase
     private readonly AppDbContext _db;
     public RoomsController(AppDbContext db) => _db = db;
     public record JoinRoomRequest(string DisplayName, string DeviceId);
-
+    private const int MaxMembers = 500;
+    private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
+    public record HeartbeatRequest(Guid MemberId);
 
     [HttpPost]
     public async Task<IActionResult> Create()
@@ -65,6 +67,14 @@ public class RoomsController : ControllerBase
 
             return Ok(new { roomCode = room.Code, memberId = existing.Id, joinedAtUtc = existing.JoinedAtUtc });
         }
+        
+        var cutoff = DateTime.UtcNow - ActiveWindow;
+
+        var activeCount = await _db.RoomMembers
+            .CountAsync(m => m.RoomId == room.Id && m.LastSeenAtUtc >= cutoff);
+
+        if (activeCount >= MaxMembers)
+            return Conflict("Full room (capacity limit of 500)");
 
         var member = new RoomMember
         {
@@ -80,7 +90,27 @@ public class RoomsController : ControllerBase
 
         return Ok(new { roomCode = room.Code, memberId = member.Id, joinedAtUtc = member.JoinedAtUtc });
     }
+    
+    [HttpPost("{code}/heartbeat")]
+    public async Task<IActionResult> Heartbeat(string code, [FromBody] HeartbeatRequest req)
+    {
+        code = code.Trim().ToUpperInvariant();
 
+        var room = await _db.Rooms.SingleOrDefaultAsync(r => r.Code == code);
+        if (room is null)
+            return NotFound("Room not found.");
+
+        var member = await _db.RoomMembers
+            .SingleOrDefaultAsync(m => m.Id == req.MemberId && m.RoomId == room.Id);
+
+        if (member is null)
+            return NotFound("Membrer not found.");
+
+        member.LastSeenAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
 
     private static string GenerateRoomCode(int length)
     {
