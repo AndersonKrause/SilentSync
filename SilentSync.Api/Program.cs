@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SilentSync.Api.Data;
+using SilentSync.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 
 // DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -25,5 +27,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+app.MapHub<RoomHub>("/hubs/rooms");
 
 app.Run();
