@@ -1,0 +1,226 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>SilentSync - Telão Controller</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 980px; }
+        label { display:block; font-weight: 600; margin-top: 10px; }
+        input, button { padding: 10px; margin-top: 6px; width: 100%; }
+        .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
+
+        .grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: 1fr;
+            align-items: start;
+        }
+
+        @media (min-width: 900px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .card {
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 14px;
+            background: #fff;
+        }
+
+        .actions {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 1fr;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 900px) {
+            .actions.two { grid-template-columns: 1fr 1fr; }
+        }
+
+        video { width: 100%; margin-top: 12px; background:#000; border-radius: 12px; }
+        .small { font-size: 12px; opacity: 0.8; margin-top: 8px; }
+        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; }
+    </style>
+
+</head>
+<body>
+<h2>Telão Controller <span id="status" class="pill">desconectado</span></h2>
+
+<div class="grid">
+    <div class="card">
+        <label>Room Code</label>
+        <input id="roomCode" placeholder="FEMC9H" />
+
+        <label>MasterKey</label>
+        <input id="masterKey" placeholder="(igual ao User Secrets Player:MasterKey)" />
+
+        <label>Audio URL (HLS .m3u8)</label>
+        <input id="audioUrl" placeholder="https://cdn.../audio.m3u8" />
+
+        <div class="actions">
+            <button id="connectBtn">Conectar</button>
+        </div>
+
+        <div class="small">Abra via http://localhost:5031/controller.html (DEV).</div>
+    </div>
+
+    <div class="card">
+        <label>Arquivo de vídeo (local)</label>
+        <input id="file" type="file" accept="video/*" />
+
+        <div class="actions two">
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn">Pause</button>
+        </div>
+
+        <label>Seek (ms)</label>
+        <input id="seekMs" placeholder="ex: 83400" />
+
+        <div class="actions">
+            <button id="seekBtn">Seek</button>
+        </div>
+
+        <div class="small">Deixe o vídeo mutado; o áudio real toca nos celulares.</div>
+    </div>
+</div>
+
+<video id="video" controls muted playsinline></video>
+
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<script>
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const video = document.getElementById('video');
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const norm = (s) => (s || "").trim().toUpperCase();
+
+    function log(...a){
+        const line = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+        logEl.textContent += line + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    function setStatus(s){ statusEl.textContent = s; }
+
+    let conn = null;
+
+    // throttling para não spammar UpdatePlayerState
+    let lastSent = 0;
+    let pending = false;
+
+    function buildPayload() {
+        const roomCode = norm(document.getElementById('roomCode').value);
+        const masterKey = document.getElementById('masterKey').value;
+        const audioUrl = (document.getElementById('audioUrl').value || "").trim();
+
+        const isPlaying = !video.paused && !video.ended;
+        const positionMs = Math.max(0, Math.floor(video.currentTime * 1000));
+
+        return { roomCode, isPlaying, positionMs, audioUrl, masterKey };
+    }
+
+    async function sendState(reason) {
+        if (!conn) return;
+        const payload = buildPayload();
+        if (!payload.roomCode) return;
+
+        try {
+            const state = await conn.invoke("UpdatePlayerState", {
+                roomCode: payload.roomCode,
+                isPlaying: payload.isPlaying,
+                positionMs: payload.positionMs,
+                audioUrl: payload.audioUrl,
+                masterKey: payload.masterKey
+            });
+            log("sent:", reason, state);
+        } catch (e) {
+            log("ERROR sendState:", reason, e?.message || e);
+        }
+    }
+
+    // envia no máximo 2x por segundo; se tiver spam, manda o último
+    async function scheduleSend(reason) {
+        const now = Date.now();
+        if ((now - lastSent) >= 500) {
+            lastSent = now;
+            await sendState(reason);
+            return;
+        }
+
+        pending = true;
+        await sleep(550);
+        if (pending) {
+            pending = false;
+            lastSent = Date.now();
+            await sendState("throttled");
+        }
+    }
+
+    document.getElementById('connectBtn').onclick = async () => {
+        const roomCode = norm(document.getElementById('roomCode').value);
+        const masterKey = document.getElementById('masterKey').value;
+
+        if (!roomCode) { alert("Preencha Room Code."); return; }
+        if (!masterKey) { alert("Preencha MasterKey."); return; }
+
+        const hubUrl = window.location.origin + "/hubs/rooms";
+
+        conn = new signalR.HubConnectionBuilder()
+            .withUrl(hubUrl)
+            .withAutomaticReconnect()
+            .build();
+
+        conn.onclose(() => setStatus("desconectado"));
+        conn.onreconnecting(() => setStatus("reconectando..."));
+        conn.onreconnected(() => setStatus("conectado"));
+
+        await conn.start();
+        setStatus("conectado");
+        log("connected:", hubUrl);
+
+        // entra no grupo como controller
+        await conn.invoke("JoinAsController", roomCode, masterKey);
+        log("joined as controller:", roomCode);
+
+        // manda estado inicial
+        await scheduleSend("connect");
+    };
+
+    document.getElementById('file').addEventListener('change', (ev) => {
+        const f = ev.target.files?.[0];
+        if (!f) return;
+        video.src = URL.createObjectURL(f);
+        log("video loaded:", f.name);
+    });
+
+    document.getElementById('playBtn').onclick = async () => {
+        await video.play();
+        await scheduleSend("playBtn");
+    };
+
+    document.getElementById('pauseBtn').onclick = async () => {
+        video.pause();
+        await scheduleSend("pauseBtn");
+    };
+
+    document.getElementById('seekBtn').onclick = async () => {
+        const v = parseInt(document.getElementById('seekMs').value, 10);
+        if (!Number.isFinite(v)) { alert("Seek inválido"); return; }
+        video.currentTime = v / 1000;
+        await scheduleSend("seekBtn");
+    };
+
+    // eventos do vídeo (enviam updates automaticamente)
+    video.addEventListener('play', () => scheduleSend("play"));
+    video.addEventListener('pause', () => scheduleSend("pause"));
+    video.addEventListener('seeking', () => scheduleSend("seeking"));
+    video.addEventListener('seeked', () => scheduleSend("seeked"));
+    video.addEventListener('timeupdate', () => scheduleSend("timeupdate"));
+</script>
+</body>
+</html>
