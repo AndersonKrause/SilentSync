@@ -6,45 +6,25 @@
     <title>SilentSync - Telão Controller</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, Arial; margin: 16px; max-width: 980px; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 1100px; }
         label { display:block; font-weight: 600; margin-top: 10px; }
         input, button { padding: 10px; margin-top: 6px; width: 100%; }
+        button { cursor:pointer; }
         .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
-
-        .grid {
-            display: grid;
-            gap: 14px;
-            grid-template-columns: 1fr;
-            align-items: start;
-        }
-        @media (min-width: 900px) {
-            .grid { grid-template-columns: 1fr 1fr; }
-        }
-
-        .card {
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            padding: 14px;
-            background: #fff;
-        }
-
-        .actions {
-            display: grid;
-            gap: 10px;
-            grid-template-columns: 1fr;
-            margin-top: 10px;
-        }
-        @media (min-width: 900px) {
-            .actions.two { grid-template-columns: 1fr 1fr; }
-        }
-
-        video { width: 100%; margin-top: 12px; background:#000; border-radius: 12px; }
-        .small { font-size: 12px; opacity: 0.8; margin-top: 8px; }
+        .grid { display:grid; gap:14px; grid-template-columns: 1fr; align-items:start; }
+        @media (min-width: 900px){ .grid { grid-template-columns: 1fr 1fr; } }
+        .card { border:1px solid #e5e5e5; border-radius:12px; padding:14px; background:#fff; }
+        .actions { display:grid; gap:10px; grid-template-columns: 1fr; margin-top:10px; }
+        @media (min-width: 900px){ .actions.two { grid-template-columns: 1fr 1fr; } }
+        video { width:100%; margin-top:12px; background:#000; border-radius:12px; }
+        .small { font-size:12px; opacity:.8; margin-top:8px; }
         pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; }
-        .hint { font-size: 12px; opacity: .85; margin-top: 6px; }
+        progress { width: 100%; height: 12px; }
+        .ok { color: #0a7; font-weight:600; }
+        .warn { color: #b80; font-weight:600; }
+        .err { color: #c22; font-weight:600; }
     </style>
 </head>
-
 <body>
 <h2>Telão Controller <span id="status" class="pill">desconectado</span></h2>
 
@@ -54,23 +34,35 @@
         <input id="roomCode" placeholder="6 Digits Code" />
 
         <label>MasterKey</label>
-        <input id="masterKey" placeholder="(User Secrets: Player:MasterKey)" />
+        <input id="masterKey" placeholder="(igual ao User Secrets Player:MasterKey)" />
 
-        <label>Audio URL (opcional)</label>
-        <input id="audioUrl" placeholder="(se for usar URL no mobile) ex: https://.../audio.m3u8 ou .mp3" />
-        <div class="hint">No modo “arquivo local”, deixe vazio.</div>
+        <label>Selecione o vídeo (local)</label>
+        <input id="file" type="file" accept="video/*" />
 
-        <div class="actions">
-            <button id="connectBtn">Conectar</button>
+        <div class="small">
+            Fluxo: selecione o vídeo → clique <b>Upload & Gerar áudio</b> → clique <b>Conectar</b> → Play/Pause/Seek.
         </div>
 
-        <div class="small">DEV: abra via http://localhost:5031/controller.html (sem HTTPS redirect).</div>
+        <div class="actions">
+            <button id="uploadBtn">Upload & Gerar áudio (HLS)</button>
+            <progress id="uploadProg" value="0" max="100" style="display:none"></progress>
+            <div id="uploadInfo" class="small"></div>
+        </div>
+
+        <label>Audio Path/URL (gerada automaticamente)</label>
+        <input id="audioUrl" placeholder="(vai ser preenchida após o upload)" />
+
+        <div class="actions">
+            <button id="connectBtn">Conectar (entrar como controller)</button>
+        </div>
+
+        <div class="small">
+            DEV: se seu backend estiver com HTTPS, abra em <b>https://localhost:7135/controller.html</b>.
+            Se for abrir no celular pela LAN, use <b>http://SEU_IP:5031/controller.html</b>.
+        </div>
     </div>
 
     <div class="card">
-        <label>Arquivo de vídeo (local)</label>
-        <input id="file" type="file" accept="video/*" />
-
         <div class="actions two">
             <button id="playBtn">Play</button>
             <button id="pauseBtn">Pause</button>
@@ -78,20 +70,17 @@
 
         <label>Seek (ms)</label>
         <input id="seekMs" placeholder="ex: 83400" />
-
         <div class="actions">
             <button id="seekBtn">Seek</button>
         </div>
 
-        <div class="small">Deixe o vídeo mutado; o áudio real toca nos celulares.</div>
+        <div class="small">
+            Deixe o vídeo <b>muted</b>; o áudio real toca nos celulares via HLS.
+        </div>
     </div>
 </div>
 
 <video id="video" controls muted playsinline></video>
-
-<label>Video URL (mp4/webm) (opcional)</label>
-<input id="videoUrl" placeholder="https://.../video.mp4" />
-<button id="loadVideoUrlBtn">Carregar URL</button>
 
 <pre id="log"></pre>
 
@@ -101,6 +90,11 @@
     const statusEl = document.getElementById('status');
     const video = document.getElementById('video');
 
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadProg = document.getElementById('uploadProg');
+    const uploadInfo = document.getElementById('uploadInfo');
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const norm = (s) => (s || "").trim().toUpperCase();
 
     function log(...a){
@@ -112,79 +106,122 @@
 
     let conn = null;
 
-    // ✅ garante que não enviamos estado antes do vídeo estar pronto
-    let videoReady = false;
-
-    video.addEventListener('loadedmetadata', () => {
-        videoReady = true;
-        log("video metadata ready. duration(s)=", video.duration);
-        scheduleSend("loadedmetadata");
-    });
-
-    video.addEventListener('error', () => {
-        log("VIDEO ERROR:", video.error);
-    });
-
-    // ✅ throttle correto: 1 timer, sempre manda o último estado
-    let throttleTimer = null;
-    let lastReason = "";
-    function scheduleSend(reason) {
-        lastReason = reason;
-
-        if (!conn) return;
-        if (throttleTimer) return;
-
-        throttleTimer = setTimeout(async () => {
-            throttleTimer = null;
-            await sendState(lastReason);
-        }, 300);
-    }
+    // throttling para não spammar UpdatePlayerState
+    let lastSent = 0;
+    let pending = false;
 
     function buildPayload() {
         const roomCode = norm(document.getElementById('roomCode').value);
         const masterKey = document.getElementById('masterKey').value;
         const audioUrl = (document.getElementById('audioUrl').value || "").trim();
 
-        const positionMs = videoReady ? Math.max(0, Math.floor(video.currentTime * 1000)) : 0;
-        const isPlaying = videoReady && !video.paused && !video.ended && positionMs > 0;
+        const isPlaying = !video.paused && !video.ended;
+        const positionMs = Math.max(0, Math.floor(video.currentTime * 1000));
 
         return { roomCode, isPlaying, positionMs, audioUrl, masterKey };
     }
 
     async function sendState(reason) {
         if (!conn) return;
-
         const payload = buildPayload();
         if (!payload.roomCode) return;
-
-        // debug útil
-        log("sending:", reason, {
-            isPlaying: payload.isPlaying,
-            positionMs: payload.positionMs,
-            currentTime: video.currentTime,
-            ready: videoReady
-        });
 
         try {
             const state = await conn.invoke("UpdatePlayerState", {
                 roomCode: payload.roomCode,
                 isPlaying: payload.isPlaying,
                 positionMs: payload.positionMs,
-                audioUrl: payload.audioUrl,
+                audioUrl: payload.audioUrl,     // pode ser "/media/..../audio.m3u8"
                 masterKey: payload.masterKey
             });
-            log("sent ok:", reason, state);
+            log("sent:", reason, state);
         } catch (e) {
             log("ERROR sendState:", reason, e?.message || e);
         }
     }
 
+    async function scheduleSend(reason) {
+        const now = Date.now();
+        if ((now - lastSent) >= 500) {
+            lastSent = now;
+            await sendState(reason);
+            return;
+        }
+        pending = true;
+        await sleep(550);
+        if (pending) {
+            pending = false;
+            lastSent = Date.now();
+            await sendState("throttled");
+        }
+    }
+
+    // ===== vídeo local =====
+    document.getElementById('file').addEventListener('change', (ev) => {
+        const f = ev.target.files?.[0];
+        if (!f) return;
+        video.src = URL.createObjectURL(f);
+        log("video loaded:", f.name);
+    });
+
+    // ===== Upload + ffmpeg =====
+    uploadBtn.onclick = async () => {
+        const f = document.getElementById('file').files?.[0];
+        if (!f) { alert("Selecione um vídeo primeiro."); return; }
+
+        uploadProg.style.display = "block";
+        uploadProg.value = 0;
+        uploadInfo.innerHTML = "<span class='warn'>Enviando e gerando HLS...</span>";
+
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/media/upload");
+            xhr.responseType = "json";
+
+            xhr.upload.onprogress = (e) => {
+                if (!e.lengthComputable) return;
+                const pct = Math.round((e.loaded / e.total) * 100);
+                uploadProg.value = pct;
+            };
+
+            const form = new FormData();
+            form.append("file", f, f.name);
+
+            const result = await new Promise((resolve, reject) => {
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+                    else reject(new Error((xhr.response && JSON.stringify(xhr.response)) || xhr.responseText || ("HTTP " + xhr.status)));
+                };
+                xhr.onerror = () => reject(new Error("Network error"));
+                xhr.send(form);
+            });
+
+            log("upload result:", result);
+
+            const pathOrUrl = result?.audioPath || result?.audioUrl; // ✅ usa o melhor
+            if (result?.audioPath) {
+                const full = window.location.origin + result.audioPath; // ✅ vira http://192.168.../media/.../audio.mp3
+                document.getElementById('audioUrl').value = full;
+                uploadInfo.innerHTML = "OK! audio: " + full;
+            } else {
+                uploadInfo.innerHTML = "Upload retornou sem audioPath.";
+            }
+            
+        } catch (e) {
+            uploadInfo.innerHTML = "<span class='err'>Falhou: " + (e?.message || e) + "</span>";
+            log("upload ERROR:", e?.message || e);
+        }
+    };
+
+    // ===== Conectar no Hub =====
     document.getElementById('connectBtn').onclick = async () => {
         const roomCode = norm(document.getElementById('roomCode').value);
         const masterKey = document.getElementById('masterKey').value;
+        const audioUrl = (document.getElementById('audioUrl').value || "").trim();
 
         if (!roomCode) { alert("Preencha Room Code."); return; }
         if (!masterKey) { alert("Preencha MasterKey."); return; }
+        if (!audioUrl) { alert("Faça o upload primeiro (precisamos do Audio)."); return; }
 
         const hubUrl = window.location.origin + "/hubs/rooms";
 
@@ -201,66 +238,38 @@
         setStatus("conectado");
         log("connected:", hubUrl);
 
-        try {
-            await conn.invoke("JoinAsController", roomCode, masterKey);
-            log("joined as controller:", roomCode);
-        } catch (e) {
-            log("ERROR JoinAsController:", e?.message || e);
-            alert("Falha ao entrar como controller. Confira MasterKey e RoomCode.");
-            return;
-        }
+        await conn.invoke("JoinAsController", roomCode, masterKey);
+        log("joined as controller:", roomCode);
 
-        // manda estado inicial (mesmo se vídeo ainda não estiver pronto)
-        scheduleSend("connect");
+        await scheduleSend("connect");
     };
 
-    document.getElementById('file').addEventListener('change', (ev) => {
-        const f = ev.target.files?.[0];
-        if (!f) return;
-
-        videoReady = false;
-        video.src = URL.createObjectURL(f);
-        log("video loaded (local):", f.name);
-        // loadedmetadata vai disparar e marcar ready
-    });
-
-    document.getElementById('loadVideoUrlBtn').onclick = () => {
-        const url = (document.getElementById('videoUrl').value || "").trim();
-        if (!url) return alert("Cole uma URL de vídeo.");
-        videoReady = false;
-        video.src = url;
-        log("video url set:", url);
-        // loadedmetadata vai disparar e marcar ready
-    };
-
+    // ===== Controls =====
     document.getElementById('playBtn').onclick = async () => {
-        try {
-            await video.play();
-            scheduleSend("playBtn");
-        } catch(e) {
-            log("ERROR play():", e?.message || e);
-            alert("Não consegui dar play (restrição do browser?). Clique no vídeo e tente novamente.");
-        }
+        await video.play();
+        await scheduleSend("playBtn");
     };
 
-    document.getElementById('pauseBtn').onclick = () => {
+    document.getElementById('pauseBtn').onclick = async () => {
         video.pause();
-        scheduleSend("pauseBtn");
+        await scheduleSend("pauseBtn");
     };
 
-    document.getElementById('seekBtn').onclick = () => {
+    document.getElementById('seekBtn').onclick = async () => {
         const v = parseInt(document.getElementById('seekMs').value, 10);
         if (!Number.isFinite(v)) { alert("Seek inválido"); return; }
         video.currentTime = v / 1000;
-        scheduleSend("seekBtn");
+        await scheduleSend("seekBtn");
     };
 
-    // eventos do vídeo
-    video.addEventListener('play',     () => scheduleSend("play"));
-    video.addEventListener('pause',    () => scheduleSend("pause"));
-    video.addEventListener('seeking',  () => scheduleSend("seeking"));
-    video.addEventListener('seeked',   () => scheduleSend("seeked"));
-    video.addEventListener('timeupdate', () => scheduleSend("timeupdate"));
+    // eventos do vídeo (enviam updates automaticamente)
+    video.addEventListener('play', () => scheduleSend("play"));
+    video.addEventListener('pause', () => scheduleSend("pause"));
+    video.addEventListener('seeking', () => scheduleSend("seeking"));
+    video.addEventListener('seeked', () => scheduleSend("seeked"));
+
+    // IMPORTANTE: não usar timeupdate (spam / instabilidade)
+    // video.addEventListener('timeupdate', () => scheduleSend("timeupdate"));
 </script>
 </body>
 </html>
