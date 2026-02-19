@@ -6,13 +6,14 @@
     <title>SilentSync - Mobile</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, Arial; margin: 16px; max-width: 720px; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 760px; }
         input, button { padding: 10px; width: 100%; margin: 6px 0; }
-        .row { display: grid; gap: 10px; grid-template-columns: 1fr; }
-        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; }
+        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
         .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
-        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; }
-        audio { width:100%; margin-top: 8px; }
+        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 240px; }
+        audio { width: 100%; margin-top: 8px; }
+        .row { display: grid; gap: 10px; grid-template-columns: 1fr; }
+        .small { font-size: 12px; opacity: .8; }
     </style>
 </head>
 <body>
@@ -20,51 +21,54 @@
 
 <div class="card">
     <label>Room Code</label>
-    <input id="roomCode" placeholder="6 Digits Code" />
-    <label>MemberId (GUID from join-room no Swagger)</label>
-    <input id="memberId" placeholder="cole o memberId" />
+    <input id="roomCode" placeholder="6 Digits Code"/>
+
+    <label>MemberId (GUID do join-room no Swagger)</label>
+    <input id="memberId" placeholder="cole o memberId"/>
+
     <button id="connectBtn">Conectar</button>
-    <div style="font-size:12px;opacity:.8">
-        Dica: depois a gente automatiza isso (sem precisar colar memberId).
+
+    <div class="small">
+        Dica: alguns celulares bloqueiam autoplay. Se não tocar, use o botão “Play áudio”.
     </div>
 </div>
 
 <div class="card">
-    <label>Selecione o arquivo de vídeo (o mesmo do telão)</label>
-    <input id="file" type="file" accept="video/*" />
     <div>Offset (ms): <b id="offset">?</b> | RTT (ms): <b id="rtt">?</b></div>
     <div>Target position (ms): <b id="targetPos">?</b></div>
+
+    <div style="margin-top:8px">
+        <div><b>Audio URL:</b></div>
+        <div id="audioUrlText" style="word-break:break-all; font-size:12px;"></div>
+    </div>
+
     <audio id="audio" controls playsinline></audio>
+    <button id="playBtn" disabled>Play áudio</button>
 </div>
 
 <pre id="log"></pre>
 
+<!-- SignalR -->
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<!-- HLS (necessário no Chrome/Android) -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+
 <script>
     const statusEl = document.getElementById('status');
     const logEl = document.getElementById('log');
-
     const offsetEl = document.getElementById('offset');
     const rttEl = document.getElementById('rtt');
     const targetPosEl = document.getElementById('targetPos');
+    const audioUrlText = document.getElementById('audioUrlText');
 
     const audio = document.getElementById('audio');
-    let hasLocalAudio = false;
-
-    document.getElementById('file').addEventListener('change', (ev) => {
-        const f = ev.target.files?.[0];
-        if (!f) return;
-
-        audio.src = URL.createObjectURL(f);
-        hasLocalAudio = true;
-        log("local file loaded:", f.name);
-    });
+    const playBtn = document.getElementById('playBtn');
 
     const norm = (s) => (s || "").trim().toUpperCase();
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     function log(...a){
-        logEl.textContent += a.map(x=>typeof x==='string'?x:JSON.stringify(x,null,2)).join(' ') + "\n";
+        logEl.textContent += a.map(x => typeof x === 'string' ? x : JSON.stringify(x,null,2)).join(' ') + "\n";
         logEl.scrollTop = logEl.scrollHeight;
     }
     function setStatus(s){ statusEl.textContent = s; }
@@ -81,7 +85,42 @@
     let serverOffsetMs = 0;
     let lastState = null;
 
-    async function timeSync(samples = 8) {
+    // HLS handling
+    let hls = null;
+    let currentAudioUrl = "";
+
+    function setAudioSource(url) {
+        // limpa
+        if (hls) { hls.destroy(); hls = null; }
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+
+        const isM3u8 = url.toLowerCase().includes(".m3u8");
+
+        // iOS/Safari: HLS nativo
+        if (isM3u8 && audio.canPlayType("application/vnd.apple.mpegurl")) {
+            audio.src = url;
+            return;
+        }
+
+        // Chrome/Android: HLS via hls.js
+        if (isM3u8 && window.Hls && Hls.isSupported()) {
+            hls = new Hls({ lowLatencyMode: true });
+            hls.loadSource(url);
+            hls.attachMedia(audio);
+
+            hls.on(Hls.Events.ERROR, (evt, data) => {
+                log("HLS error:", data?.type, data?.details, data?.fatal ? "(fatal)" : "");
+            });
+            return;
+        }
+
+        // fallback (mp3/mp4/m4a/aac direct)
+        audio.src = url;
+    }
+
+    async function timeSync(samples = 10) {
         const results = [];
         for (let i = 0; i < samples; i++) {
             const t0 = nowMs();
@@ -104,43 +143,76 @@
     async function applyState(state, reason) {
         lastState = state;
 
-        if (!hasLocalAudio) {
-            log("carregue o arquivo local no celular antes de sincronizar.");
+        if (!state.audioUrl) {
+            log("aguardando audioUrl no PlayerState...", state);
             return;
+        }
+
+        // IMPORTANTE:
+        // - Se o estado vier com "/media/....", isso vira URL absoluta do host que o celular abriu (IP do seu PC).
+        // - Se vier com "https://localhost...", no celular vai quebrar (localhost = celular).
+        const absoluteAudioUrl = new URL(state.audioUrl, window.location.origin).toString();
+
+        audioUrlText.textContent = absoluteAudioUrl;
+
+        if (currentAudioUrl !== absoluteAudioUrl) {
+            currentAudioUrl = absoluteAudioUrl;
+            setAudioSource(absoluteAudioUrl);
+            log("audio src set:", absoluteAudioUrl);
+            playBtn.disabled = false;
         }
 
         const target = calcTargetPositionMs(state);
         targetPosEl.textContent = String(Math.floor(target));
 
+        // se audio não carregou nada ainda, evita loop de seek
+        if (audio.readyState < 2) { // HAVE_CURRENT_DATA
+            log("audio ainda carregando (readyState<2), esperando...", reason);
+            return;
+        }
+
         const current = audio.currentTime * 1000;
         const diff = target - current;
 
-        if (Math.abs(diff) > 250) {
+        // seek "duro" se diferença grande
+        if (Math.abs(diff) > 350) {
             audio.currentTime = target / 1000;
             log("seek hard:", reason, "diff(ms)=", Math.floor(diff));
         }
 
         if (state.isPlaying) {
-            try { await audio.play(); } catch(e) { log("autoplay bloqueado:", e?.message || e); }
+            try { await audio.play(); }
+            catch(e) { log("autoplay bloqueado:", e?.message || e); }
         } else {
             audio.pause();
         }
     }
 
-    // correção periódica (drift)
+    // drift fix (só se estiver tocando)
     setInterval(() => {
-        if (!lastState || !hasLocalAudio) return;
-        if (!lastState.isPlaying) return; // ✅ não corrige quando está pausado
+        if (!lastState) return;
+        if (!lastState.isPlaying) return;
+        if (audio.readyState < 2) return;
 
         const target = calcTargetPositionMs(lastState);
         const current = audio.currentTime * 1000;
         const diff = target - current;
 
-        if (Math.abs(diff) > 120) {
+        // ajustes pequenos
+        if (Math.abs(diff) > 180) {
             audio.currentTime = target / 1000;
             log("drift fix diff(ms)=", Math.floor(diff));
         }
     }, 3000);
+
+    playBtn.onclick = async () => {
+        try {
+            await audio.play();
+            log("play manual OK");
+        } catch (e) {
+            log("play manual falhou:", e?.message || e);
+        }
+    };
 
     document.getElementById('connectBtn').onclick = async () => {
         const roomCode = norm(document.getElementById('roomCode').value);
@@ -148,7 +220,6 @@
 
         if (!roomCode) return alert("Preencha Room Code");
         if (!memberId) return alert("Cole o memberId (por enquanto)");
-        if (!hasLocalAudio) return alert("Selecione o arquivo de vídeo no celular antes de conectar.");
 
         const hubUrl = window.location.origin + "/hubs/rooms";
 
@@ -170,20 +241,22 @@
         setStatus("conectado");
         log("connected:", hubUrl);
 
+        // 1) sync clock
         const best = await timeSync(10);
         serverOffsetMs = best.offset;
         offsetEl.textContent = best.offset.toFixed(1);
         rttEl.textContent = best.rtt.toFixed(1);
         log("timeSync best:", best);
 
+        // 2) join room group
         await conn.invoke("JoinRoom", roomCode, memberId);
         log("joined room:", roomCode);
 
+        // 3) pull state
         const state = await conn.invoke("GetPlayerState", roomCode);
         log("GetPlayerState:", state);
         await applyState(state, "pull");
     };
 </script>
-
 </body>
 </html>

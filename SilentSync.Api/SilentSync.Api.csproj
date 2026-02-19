@@ -16,4 +16,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="App_Data\processed\" />
+    <Folder Include="App_Data\uploads\" />
+  </ItemGroup>
+
 </Project>

@@ -82,6 +82,28 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, Group(roomCode));
     }
+    private static string NormalizeAudioUrl(string audioUrl)
+    {
+        audioUrl = (audioUrl ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(audioUrl)) return "";
+
+        // se o controller mandar http://localhost:5031/media/... ou https://localhost:7135/media/...
+        // vira só /media/...
+        if (Uri.TryCreate(audioUrl, UriKind.Absolute, out var u))
+        {
+            if (u.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                u.Host.Equals("127.0.0.1"))
+            {
+                return u.PathAndQuery; // "/media/.../audio.mp3"
+            }
+        }
+
+        // se já for relativo, ok
+        if (audioUrl.StartsWith("/")) return audioUrl;
+
+        // senão, deixa como veio
+        return audioUrl;
+    }
     
     public record UpdatePlayerStateRequest(
         string RoomCode,
@@ -121,12 +143,14 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
         if (!exists) throw new HubException("Room not found.");
 
         // servidor “carimba” o tempo do estado
+        var audioUrl = NormalizeAudioUrl(req.AudioUrl);
+
         var state = new PlayerState(
             RoomCode: roomCode,
             IsPlaying: req.IsPlaying,
             PositionMs: Math.Max(0, req.PositionMs),
             ServerTimeMs: NowMs(),
-            AudioUrl: req.AudioUrl?.Trim() ?? ""
+            AudioUrl: audioUrl
         );
 
         _stateByRoom[roomCode] = state;
