@@ -136,4 +136,15 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
 
         return state;
     }
+    
+    public record TimeSyncResponse(long t0, long t1, long t2);
+
+    [HubMethodName("TimeSync")]
+    public TimeSyncResponse TimeSync(long t0)
+    {
+        var t1 = NowMs(); // server receive time
+        var t2 = NowMs(); // server send time
+        return new TimeSyncResponse(t0, t1, t2);
+    }
+
 }

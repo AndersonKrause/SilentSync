@@ -1,8 +1,51 @@
-bin/
-obj/
-.vs/
-.vscode/
+# =========================
+# Rider / IDE
+# =========================
+.idea/
+*.sln.iml
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+# .NET build
+# =========================
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.cache
 *.log
+
+# =========================
+# Node (tools)
+# =========================
+node_modules/
+tools/node_modules/
+package-lock.json
+
+# =========================
+# Docker
+# =========================
+*.env
+.env
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Secrets
+# =========================
 appsettings.Development.json
+secrets.json

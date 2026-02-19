@@ -17,7 +17,6 @@
             grid-template-columns: 1fr;
             align-items: start;
         }
-
         @media (min-width: 900px) {
             .grid { grid-template-columns: 1fr 1fr; }
         }
@@ -35,7 +34,6 @@
             grid-template-columns: 1fr;
             margin-top: 10px;
         }
-
         @media (min-width: 900px) {
             .actions.two { grid-template-columns: 1fr 1fr; }
         }
@@ -43,28 +41,30 @@
         video { width: 100%; margin-top: 12px; background:#000; border-radius: 12px; }
         .small { font-size: 12px; opacity: 0.8; margin-top: 8px; }
         pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; }
+        .hint { font-size: 12px; opacity: .85; margin-top: 6px; }
     </style>
-
 </head>
+
 <body>
 <h2>Telão Controller <span id="status" class="pill">desconectado</span></h2>
 
 <div class="grid">
     <div class="card">
         <label>Room Code</label>
-        <input id="roomCode" placeholder="FEMC9H" />
+        <input id="roomCode" placeholder="6 Digits Code" />
 
         <label>MasterKey</label>
-        <input id="masterKey" placeholder="(igual ao User Secrets Player:MasterKey)" />
+        <input id="masterKey" placeholder="(User Secrets: Player:MasterKey)" />
 
-        <label>Audio URL (HLS .m3u8)</label>
-        <input id="audioUrl" placeholder="https://cdn.../audio.m3u8" />
+        <label>Audio URL (opcional)</label>
+        <input id="audioUrl" placeholder="(se for usar URL no mobile) ex: https://.../audio.m3u8 ou .mp3" />
+        <div class="hint">No modo “arquivo local”, deixe vazio.</div>
 
         <div class="actions">
             <button id="connectBtn">Conectar</button>
         </div>
 
-        <div class="small">Abra via http://localhost:5031/controller.html (DEV).</div>
+        <div class="small">DEV: abra via http://localhost:5031/controller.html (sem HTTPS redirect).</div>
     </div>
 
     <div class="card">
@@ -89,6 +89,10 @@
 
 <video id="video" controls muted playsinline></video>
 
+<label>Video URL (mp4/webm) (opcional)</label>
+<input id="videoUrl" placeholder="https://.../video.mp4" />
+<button id="loadVideoUrlBtn">Carregar URL</button>
+
 <pre id="log"></pre>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
@@ -97,11 +101,10 @@
     const statusEl = document.getElementById('status');
     const video = document.getElementById('video');
 
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const norm = (s) => (s || "").trim().toUpperCase();
 
     function log(...a){
-        const line = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+        const line = a.map(x => typeof x === 'string' ? x : JSON.stringify(x, null, 2)).join(' ');
         logEl.textContent += line + "\n";
         logEl.scrollTop = logEl.scrollHeight;
     }
@@ -109,25 +112,58 @@
 
     let conn = null;
 
-    // throttling para não spammar UpdatePlayerState
-    let lastSent = 0;
-    let pending = false;
+    // ✅ garante que não enviamos estado antes do vídeo estar pronto
+    let videoReady = false;
+
+    video.addEventListener('loadedmetadata', () => {
+        videoReady = true;
+        log("video metadata ready. duration(s)=", video.duration);
+        scheduleSend("loadedmetadata");
+    });
+
+    video.addEventListener('error', () => {
+        log("VIDEO ERROR:", video.error);
+    });
+
+    // ✅ throttle correto: 1 timer, sempre manda o último estado
+    let throttleTimer = null;
+    let lastReason = "";
+    function scheduleSend(reason) {
+        lastReason = reason;
+
+        if (!conn) return;
+        if (throttleTimer) return;
+
+        throttleTimer = setTimeout(async () => {
+            throttleTimer = null;
+            await sendState(lastReason);
+        }, 300);
+    }
 
     function buildPayload() {
         const roomCode = norm(document.getElementById('roomCode').value);
         const masterKey = document.getElementById('masterKey').value;
         const audioUrl = (document.getElementById('audioUrl').value || "").trim();
 
-        const isPlaying = !video.paused && !video.ended;
-        const positionMs = Math.max(0, Math.floor(video.currentTime * 1000));
+        const positionMs = videoReady ? Math.max(0, Math.floor(video.currentTime * 1000)) : 0;
+        const isPlaying = videoReady && !video.paused && !video.ended && positionMs > 0;
 
         return { roomCode, isPlaying, positionMs, audioUrl, masterKey };
     }
 
     async function sendState(reason) {
         if (!conn) return;
+
         const payload = buildPayload();
         if (!payload.roomCode) return;
+
+        // debug útil
+        log("sending:", reason, {
+            isPlaying: payload.isPlaying,
+            positionMs: payload.positionMs,
+            currentTime: video.currentTime,
+            ready: videoReady
+        });
 
         try {
             const state = await conn.invoke("UpdatePlayerState", {
@@ -137,27 +173,9 @@
                 audioUrl: payload.audioUrl,
                 masterKey: payload.masterKey
             });
-            log("sent:", reason, state);
+            log("sent ok:", reason, state);
         } catch (e) {
             log("ERROR sendState:", reason, e?.message || e);
-        }
-    }
-
-    // envia no máximo 2x por segundo; se tiver spam, manda o último
-    async function scheduleSend(reason) {
-        const now = Date.now();
-        if ((now - lastSent) >= 500) {
-            lastSent = now;
-            await sendState(reason);
-            return;
-        }
-
-        pending = true;
-        await sleep(550);
-        if (pending) {
-            pending = false;
-            lastSent = Date.now();
-            await sendState("throttled");
         }
     }
 
@@ -183,43 +201,65 @@
         setStatus("conectado");
         log("connected:", hubUrl);
 
-        // entra no grupo como controller
-        await conn.invoke("JoinAsController", roomCode, masterKey);
-        log("joined as controller:", roomCode);
+        try {
+            await conn.invoke("JoinAsController", roomCode, masterKey);
+            log("joined as controller:", roomCode);
+        } catch (e) {
+            log("ERROR JoinAsController:", e?.message || e);
+            alert("Falha ao entrar como controller. Confira MasterKey e RoomCode.");
+            return;
+        }
 
-        // manda estado inicial
-        await scheduleSend("connect");
+        // manda estado inicial (mesmo se vídeo ainda não estiver pronto)
+        scheduleSend("connect");
     };
 
     document.getElementById('file').addEventListener('change', (ev) => {
         const f = ev.target.files?.[0];
         if (!f) return;
+
+        videoReady = false;
         video.src = URL.createObjectURL(f);
-        log("video loaded:", f.name);
+        log("video loaded (local):", f.name);
+        // loadedmetadata vai disparar e marcar ready
     });
 
+    document.getElementById('loadVideoUrlBtn').onclick = () => {
+        const url = (document.getElementById('videoUrl').value || "").trim();
+        if (!url) return alert("Cole uma URL de vídeo.");
+        videoReady = false;
+        video.src = url;
+        log("video url set:", url);
+        // loadedmetadata vai disparar e marcar ready
+    };
+
     document.getElementById('playBtn').onclick = async () => {
-        await video.play();
-        await scheduleSend("playBtn");
+        try {
+            await video.play();
+            scheduleSend("playBtn");
+        } catch(e) {
+            log("ERROR play():", e?.message || e);
+            alert("Não consegui dar play (restrição do browser?). Clique no vídeo e tente novamente.");
+        }
     };
 
-    document.getElementById('pauseBtn').onclick = async () => {
+    document.getElementById('pauseBtn').onclick = () => {
         video.pause();
-        await scheduleSend("pauseBtn");
+        scheduleSend("pauseBtn");
     };
 
-    document.getElementById('seekBtn').onclick = async () => {
+    document.getElementById('seekBtn').onclick = () => {
         const v = parseInt(document.getElementById('seekMs').value, 10);
         if (!Number.isFinite(v)) { alert("Seek inválido"); return; }
         video.currentTime = v / 1000;
-        await scheduleSend("seekBtn");
+        scheduleSend("seekBtn");
     };
 
-    // eventos do vídeo (enviam updates automaticamente)
-    video.addEventListener('play', () => scheduleSend("play"));
-    video.addEventListener('pause', () => scheduleSend("pause"));
-    video.addEventListener('seeking', () => scheduleSend("seeking"));
-    video.addEventListener('seeked', () => scheduleSend("seeked"));
+    // eventos do vídeo
+    video.addEventListener('play',     () => scheduleSend("play"));
+    video.addEventListener('pause',    () => scheduleSend("pause"));
+    video.addEventListener('seeking',  () => scheduleSend("seeking"));
+    video.addEventListener('seeked',   () => scheduleSend("seeked"));
     video.addEventListener('timeupdate', () => scheduleSend("timeupdate"));
 </script>
 </body>
