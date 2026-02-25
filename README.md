@@ -36,7 +36,7 @@ The goal is to enable scalable, low-latency synchronized audio playback across m
 - `<audio>` HTML5
 - hls.js (HLS)
 
- ## 🛠 Technologies
+## 🛠 Technologies
 - .NET 9
 - ASP.NET Core
 - SignalR
@@ -55,6 +55,44 @@ SilentSync aims to provide a scalable and lightweight solution for synchronized 
 - Silent exhibitions
 - Conferences
 - Educational environments
+
+## ⚙️ Running the Project
+
+### 1 Start PostgreSQL
+```PowerShell:
+ docker compose up -d
+ docker ps
+```
+### 2 Configure appsettings.Development.json:
+```json {
+{
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=silentsync;Username=your_username;Password=your_passkey"
+  },
+  "Player": {
+    "MasterKey": "choose_a_password"
+  },
+  "Tools": {
+    "FFmpegPath": "C:\\Path\\To\\ffmpeg\\bin\\ffmpeg.exe"
+  },
+  "PublicBaseUrl": "http://YOUR_IP:5031"
+}
+```
+
+### 3 Run the API
+``` PowerShell: 
+dotnet run
+```
+
+### 4 Access the Application
+On the Controller (PC):
+``` 
+http://localhost:5031/controller.html
+```
+On mobile devices (same Wi-Fi network):
+``` 
+http://YOUR_LOCAL_IP:5031/mobile.html
+```
 
 ## 👨‍💻 Author
 Developed by Anderson Davi Krause
