@@ -10,6 +10,10 @@ public class AppDbContext : DbContext
     public DbSet<RoomMember> RoomMembers => Set<RoomMember>();
 
     public DbSet<Room> Rooms => Set<Room>();
+    
+    public DbSet<AppUser> Users => Set<AppUser>();
+    
+    public DbSet<LoginCode> LoginCodes => Set<LoginCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +34,27 @@ public class AppDbContext : DbContext
 
             // The same device cannot connect twice in the same room.
             entity.HasIndex(x => new { x.RoomId, x.DeviceId }).IsUnique();
+            
+            entity.HasIndex(x => new { x.RoomId, x.UserId });
         });
+        
+        modelBuilder.Entity<AppUser>()
+            .HasIndex(x => x.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<AppUser>()
+            .Property(x => x.Email)
+            .HasMaxLength(200);
+
+        modelBuilder.Entity<LoginCode>()
+            .HasIndex(x => new { x.Email, x.Code });
+
+        modelBuilder.Entity<LoginCode>()
+            .Property(x => x.Email)
+            .HasMaxLength(200);
+
+        modelBuilder.Entity<LoginCode>()
+            .Property(x => x.Code)
+            .HasMaxLength(10);
     }
 }

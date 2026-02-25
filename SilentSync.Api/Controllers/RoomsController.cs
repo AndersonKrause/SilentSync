@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using SilentSync.Api.Data;
 using SilentSync.Api.Models;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace SilentSync.Api.Controllers;
 
@@ -16,6 +18,8 @@ public class RoomsController : ControllerBase
     private const int MaxMembers = 500;
     private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
     public record HeartbeatRequest(Guid MemberId);
+    public record JoinRoomAuthRequest(string DisplayName, string DeviceId);
+    
 
     [HttpPost]
     public async Task<IActionResult> Create()
@@ -79,6 +83,79 @@ public class RoomsController : ControllerBase
         var member = new RoomMember
         {
             RoomId = room.Id,
+            DisplayName = req.DisplayName.Trim(),
+            DeviceId = req.DeviceId.Trim(),
+            JoinedAtUtc = DateTime.UtcNow,
+            LastSeenAtUtc = DateTime.UtcNow
+        };
+
+        _db.RoomMembers.Add(member);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { roomCode = room.Code, memberId = member.Id, joinedAtUtc = member.JoinedAtUtc });
+    }
+  
+    [Authorize]
+    [HttpPost("{code}/join-auth")]
+    public async Task<IActionResult> JoinAuth(string code, [FromBody] JoinRoomAuthRequest req)
+    {
+        code = code.Trim().ToUpperInvariant();
+
+        if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Length > 80)
+            return BadRequest("Invalid DisplayName.");
+
+        if (string.IsNullOrWhiteSpace(req.DeviceId) || req.DeviceId.Length > 200)
+            return BadRequest("Invalid DeviceId.");
+
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub"); // fallback JWT
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized("Invalid token (missing user id).");
+
+        var room = await _db.Rooms.SingleOrDefaultAsync(r => r.Code == code);
+        if (room is null)
+            return NotFound("Room not found.");
+
+        // 1) Tenta achar por Room + UserId (melhor UX: reaproveita membro)
+        var member = await _db.RoomMembers
+            .SingleOrDefaultAsync(m => m.RoomId == room.Id && m.UserId == userId);
+
+        if (member is not null)
+        {
+            member.LastSeenAtUtc = DateTime.UtcNow;
+            member.DisplayName = req.DisplayName.Trim();
+            member.DeviceId = req.DeviceId.Trim(); // atualiza device atual
+            await _db.SaveChangesAsync();
+
+            return Ok(new { roomCode = room.Code, memberId = member.Id, joinedAtUtc = member.JoinedAtUtc });
+        }
+
+        // 2) Se não achou por UserId, tenta por DeviceId (caso usuário troque login / etc)
+        var existingByDevice = await _db.RoomMembers
+            .SingleOrDefaultAsync(m => m.RoomId == room.Id && m.DeviceId == req.DeviceId);
+
+        if (existingByDevice is not null)
+        {
+            existingByDevice.LastSeenAtUtc = DateTime.UtcNow;
+            existingByDevice.DisplayName = req.DisplayName.Trim();
+            existingByDevice.UserId = userId; // vincula agora ao user
+            await _db.SaveChangesAsync();
+
+            return Ok(new { roomCode = room.Code, memberId = existingByDevice.Id, joinedAtUtc = existingByDevice.JoinedAtUtc });
+        }
+
+        // capacity check (mesmo do Join)
+        var cutoff = DateTime.UtcNow - ActiveWindow;
+        var activeCount = await _db.RoomMembers
+            .CountAsync(m => m.RoomId == room.Id && m.LastSeenAtUtc >= cutoff);
+
+        if (activeCount >= MaxMembers)
+            return Conflict("Full room (capacity limit of 500)");
+
+        member = new RoomMember
+        {
+            RoomId = room.Id,
+            UserId = userId,
             DisplayName = req.DisplayName.Trim(),
             DeviceId = req.DeviceId.Trim(),
             JoinedAtUtc = DateTime.UtcNow,
