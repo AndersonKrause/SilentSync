@@ -13,13 +13,16 @@ namespace SilentSync.Api.Controllers;
 public class RoomsController : ControllerBase
 {
     private readonly AppDbContext _db;
+
     public record JoinRoomRequest(string DisplayName, string DeviceId);
+
     public record HeartbeatRequest(Guid MemberId);
+
     public record JoinRoomAuthRequest(string DisplayName, string DeviceId);
-    
+
     private const int MaxMembers = 500;
     private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
-    
+
     public RoomsController(AppDbContext db)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
@@ -48,7 +51,7 @@ public class RoomsController : ControllerBase
 
         return Problem("A unique RoomCode could not be generated. Please try again.");
     }
-    
+
     [HttpPost("{code}/join")]
     public async Task<IActionResult> Join(string code, [FromBody] JoinRoomRequest req)
     {
@@ -75,7 +78,7 @@ public class RoomsController : ControllerBase
 
             return Ok(new { roomCode = room.Code, memberId = existing.Id, joinedAtUtc = existing.JoinedAtUtc });
         }
-        
+
         var cutoff = DateTime.UtcNow - ActiveWindow;
 
         var activeCount = await _db.RoomMembers
@@ -98,7 +101,7 @@ public class RoomsController : ControllerBase
 
         return Ok(new { roomCode = room.Code, memberId = member.Id, joinedAtUtc = member.JoinedAtUtc });
     }
-  
+
     [Authorize]
     [HttpPost("{code}/join-auth")]
     public async Task<IActionResult> JoinAuth(string code, [FromBody] JoinRoomAuthRequest req)
@@ -145,7 +148,8 @@ public class RoomsController : ControllerBase
             existingByDevice.UserId = userId; // vincula agora ao user
             await _db.SaveChangesAsync();
 
-            return Ok(new { roomCode = room.Code, memberId = existingByDevice.Id, joinedAtUtc = existingByDevice.JoinedAtUtc });
+            return Ok(new
+                { roomCode = room.Code, memberId = existingByDevice.Id, joinedAtUtc = existingByDevice.JoinedAtUtc });
         }
 
         // capacity check (mesmo do Join)
@@ -171,7 +175,7 @@ public class RoomsController : ControllerBase
 
         return Ok(new { roomCode = room.Code, memberId = member.Id, joinedAtUtc = member.JoinedAtUtc });
     }
-    
+
     [HttpPost("{code}/heartbeat")]
     public async Task<IActionResult> Heartbeat(string code, [FromBody] HeartbeatRequest req)
     {
@@ -201,12 +205,26 @@ public class RoomsController : ControllerBase
         {
             return NotFound("Room not found.");
         }
+
         _db.Rooms.Remove(deletedRoom);
         await _db.SaveChangesAsync();
         return NoContent();
     }
-    
-    private static string GenerateRoomCode(int length)
+
+    [HttpDelete("{id:guid}/delete/user")]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        var deletedUser = await _db.Users.SingleOrDefaultAsync(u => u.Id == id);
+        if (deletedUser is null)
+        {
+            return NotFound("User not found.");
+        }
+        _db.Users.Remove(deletedUser);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+private static string GenerateRoomCode(int length)
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         var bytes = RandomNumberGenerator.GetBytes(length);
