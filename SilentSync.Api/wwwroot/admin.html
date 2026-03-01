@@ -1,0 +1,392 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>SilentSync - Admin</title>
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+<h2>Admin <span id="status" class="pill">desconectado</span></h2>
+
+<!-- Room + Links -->
+<div class="card" style="margin-bottom:14px">
+    <h3 style="margin:0 0 8px 0;">Sala (Room)</h3>
+
+    <div class="actions two">
+        <button id="createRoomBtn">Criar Room (abre Telão)</button>
+        <button id="openScreenBtn" disabled>Abrir Telão</button>
+    </div>
+
+    <label>Room Code</label>
+    <input id="roomCode" placeholder="6 Digits Code" />
+
+    <div class="small">
+        <div><b>Link Telão:</b> <span id="screenLinkText" class="mono">—</span></div>
+        <div><b>Link Registro (QR):</b> <span id="regLinkText" class="mono">—</span></div>
+    </div>
+
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <img id="qrReg" alt="QR Registro" style="display:none; width:140px; height:auto; background:#fff; padding:8px; border-radius:12px; border:1px solid #e5e5e5;">
+        <button id="copyRegBtn" class="btnSmall" disabled>Copiar link do Registro</button>
+    </div>
+
+    <div class="small muted">
+        Importante: os links/QR aqui sempre usam o IP (para funcionar no celular).
+    </div>
+</div>
+
+<div class="grid">
+    <!-- Left: upload + connect -->
+    <div class="card">
+        <h3 style="margin:0 0 8px 0;">Mídia + Conexão</h3>
+
+        <label>MasterKey</label>
+        <input id="masterKey" placeholder="(igual ao User Secrets Player:MasterKey)" />
+
+        <label>Selecione o vídeo (local)</label>
+        <input id="file" type="file" accept="video/*" />
+
+        <div class="small">
+            Fluxo: <b>Criar Room</b> → selecione vídeo → <b>Upload</b> → <b>Conectar</b> → Play/Pause/Seek.
+        </div>
+
+        <div class="actions">
+            <button id="uploadBtn">Upload (salvar vídeo + gerar áudio)</button>
+            <progress id="uploadProg" value="0" max="100" style="display:none"></progress>
+            <div id="uploadInfo" class="small"></div>
+        </div>
+
+        <label>Audio URL (gerada automaticamente)</label>
+        <input id="audioUrl" placeholder="(preenchida após upload)" />
+
+        <label>Video URL (gerada automaticamente)</label>
+        <input id="videoUrl" placeholder="(preenchida após upload)" />
+
+        <div class="actions">
+            <button id="connectBtn">Conectar (controller)</button>
+        </div>
+
+        <div class="small muted">
+            Dica: abra o telão em outra aba (o botão “Criar Room” já faz isso).
+        </div>
+    </div>
+
+    <!-- Right: controls -->
+    <div class="card">
+        <h3 style="margin:0 0 8px 0;">Controles</h3>
+
+        <div class="actions two">
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn">Pause</button>
+        </div>
+
+        <label>Seek (ms)</label>
+        <input id="seekMs" placeholder="ex: 83400" />
+        <div class="actions">
+            <button id="seekBtn">Seek</button>
+        </div>
+
+        <div class="small">
+            O vídeo no admin é só preview. O telão toca o vídeo via URL enviada no estado.
+        </div>
+    </div>
+</div>
+
+<video id="video" controls muted playsinline></video>
+
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<script>
+    // ✅ IP fixo (local)
+    const PUBLIC_ORIGIN = "http://192.168.178.21:5031";
+    const PUBLIC_HOST = "192.168.178.21:5031";
+
+    // ===== UI refs =====
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const video = document.getElementById('video');
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadProg = document.getElementById('uploadProg');
+    const uploadInfo = document.getElementById('uploadInfo');
+
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const openScreenBtn = document.getElementById('openScreenBtn');
+    const copyRegBtn = document.getElementById('copyRegBtn');
+    const screenLinkText = document.getElementById('screenLinkText');
+    const regLinkText = document.getElementById('regLinkText');
+    const qrReg = document.getElementById('qrReg');
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const norm = (s) => (s || "").trim().toUpperCase();
+
+    function log(...a){
+        const line = a.map(x => typeof x === 'string' ? x : JSON.stringify(x, null, 2)).join(' ');
+        logEl.textContent += line + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    function setStatus(s){ statusEl.textContent = s; }
+
+    // ===== links/qr =====
+    function buildLinks(roomCode){
+        const origin = PUBLIC_ORIGIN; // sempre IP
+        const screenUrl = `${origin}/screen.html?room=${encodeURIComponent(roomCode)}&host=${encodeURIComponent(PUBLIC_HOST)}`;
+        const regUrl = `${origin}/register.html?room=${encodeURIComponent(roomCode)}`;
+        return { screenUrl, regUrl };
+    }
+
+    function renderLinks(roomCode){
+        const rc = norm(roomCode);
+        if(!rc){
+            screenLinkText.textContent = "—";
+            regLinkText.textContent = "—";
+            qrReg.style.display = "none";
+            openScreenBtn.disabled = true;
+            copyRegBtn.disabled = true;
+            return;
+        }
+        const { screenUrl, regUrl } = buildLinks(rc);
+        screenLinkText.textContent = screenUrl;
+        regLinkText.textContent = regUrl;
+
+        qrReg.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(regUrl)}`;
+        qrReg.style.display = "block";
+        openScreenBtn.disabled = false;
+        copyRegBtn.disabled = false;
+    }
+
+    (function initRoomFromQuery(){
+        const qsRoom = new URLSearchParams(location.search).get("room");
+        if(qsRoom) document.getElementById('roomCode').value = norm(qsRoom);
+        renderLinks(document.getElementById('roomCode').value);
+    })();
+
+    document.getElementById('roomCode').addEventListener('input', (e) => renderLinks(e.target.value));
+
+    createRoomBtn.onclick = async () => {
+        createRoomBtn.disabled = true;
+        createRoomBtn.textContent = "Criando...";
+        try{
+            // API pode estar em localhost ou IP; usamos caminho relativo (mesma origem do admin)
+            const res = await fetch("/api/rooms", { method: "POST" });
+            const json = await res.json().catch(()=>null);
+            if(!res.ok) throw new Error((json && (json.message || json.title)) || ("HTTP " + res.status));
+
+            const code = json?.code || json?.Code || json?.roomCode || json?.room?.code;
+            if(!code) throw new Error("Resposta sem code");
+
+            const rc = norm(code);
+            document.getElementById('roomCode').value = rc;
+            renderLinks(rc);
+
+            log("room created:", json);
+
+            // ✅ abre telão automaticamente no IP
+            const { screenUrl } = buildLinks(rc);
+            window.open(screenUrl, "_blank", "noopener,noreferrer");
+        }catch(e){
+            alert("Falhou ao criar room: " + (e?.message || e));
+            log("create room ERROR:", e?.message || e);
+        }finally{
+            createRoomBtn.disabled = false;
+            createRoomBtn.textContent = "Criar Room (abre Telão)";
+        }
+    };
+
+    openScreenBtn.onclick = () => {
+        const rc = norm(document.getElementById('roomCode').value);
+        if(!rc) return alert("Room Code vazio");
+        const { screenUrl } = buildLinks(rc);
+        window.open(screenUrl, "_blank", "noopener,noreferrer");
+    };
+
+    copyRegBtn.onclick = async () => {
+        const rc = norm(document.getElementById('roomCode').value);
+        if(!rc) return alert("Room Code vazio");
+        const { regUrl } = buildLinks(rc);
+        try{
+            await navigator.clipboard.writeText(regUrl);
+            copyRegBtn.textContent = "Copiado ✅";
+            setTimeout(()=> copyRegBtn.textContent = "Copiar link do Registro", 1200);
+        }catch{
+            prompt("Copie o link do Registro:", regUrl);
+        }
+    };
+
+    // ===== vídeo local (preview no admin) =====
+    document.getElementById('file').addEventListener('change', (ev) => {
+        const f = ev.target.files?.[0];
+        if(!f) return;
+        video.src = URL.createObjectURL(f);
+        log("video loaded (admin preview):", f.name);
+    });
+
+    // ===== Upload (espera { audioPath, videoPath }) =====
+    uploadBtn.onclick = async () => {
+        const f = document.getElementById('file').files?.[0];
+        if (!f) { alert("Selecione um vídeo primeiro."); return; }
+
+        uploadProg.style.display = "block";
+        uploadProg.value = 0;
+        uploadInfo.innerHTML = "<span class='warn'>Enviando e processando...</span>";
+
+        try{
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/media/upload");
+            xhr.responseType = "json";
+
+            xhr.upload.onprogress = (e) => {
+                if (!e.lengthComputable) return;
+                uploadProg.value = Math.round((e.loaded / e.total) * 100);
+            };
+
+            const form = new FormData();
+            form.append("file", f, f.name);
+
+            const result = await new Promise((resolve, reject) => {
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+                    else reject(new Error((xhr.response && JSON.stringify(xhr.response)) || xhr.responseText || ("HTTP " + xhr.status)));
+                };
+                xhr.onerror = () => reject(new Error("Network error"));
+                xhr.send(form);
+            });
+
+            log("upload result:", result);
+
+            const a = result?.audioPath || result?.audioUrl;
+            const v = result?.videoPath || result?.videoUrl;
+
+            // ✅ IMPORTANTÍSSIMO: sempre usar o IP para o público
+            if (a) document.getElementById('audioUrl').value = PUBLIC_ORIGIN + a;
+            if (v) document.getElementById('videoUrl').value = PUBLIC_ORIGIN + v;
+
+            if (a && v) uploadInfo.innerHTML = "<span class='ok'>OK! áudio + vídeo prontos ✅</span>";
+            else uploadInfo.innerHTML = "<span class='warn'>Upload OK, mas faltou audioPath/videoPath na resposta.</span>";
+
+        }catch(e){
+            uploadInfo.innerHTML = "<span class='err'>Falhou: " + (e?.message || e) + "</span>";
+            log("upload ERROR:", e?.message || e);
+        }
+    };
+
+    // ===== SignalR control =====
+    let conn = null;
+    let lastSent = 0;
+    let pending = false;
+
+    function buildPayload() {
+        const roomCode = norm(document.getElementById('roomCode').value);
+        const masterKey = document.getElementById('masterKey').value;
+        const audioUrl = (document.getElementById('audioUrl').value || "").trim();
+        const videoUrl = (document.getElementById('videoUrl').value || "").trim();
+
+        const isPlaying = !video.paused && !video.ended;
+        const positionMs = Math.max(0, Math.floor(video.currentTime * 1000));
+
+        return { roomCode, isPlaying, positionMs, audioUrl, videoUrl, masterKey };
+    }
+
+    async function sendState(reason) {
+        if (!conn) return;
+        const payload = buildPayload();
+        if (!payload.roomCode) return;
+
+        try {
+            const state = await conn.invoke("UpdatePlayerState", {
+                roomCode: payload.roomCode,
+                isPlaying: payload.isPlaying,
+                positionMs: payload.positionMs,
+                audioUrl: payload.audioUrl,
+                videoUrl: payload.videoUrl,
+                masterKey: payload.masterKey
+            });
+            log("sent:", reason, state);
+        } catch (e) {
+            log("ERROR sendState:", reason, e?.message || e);
+        }
+    }
+
+    async function scheduleSend(reason) {
+        const now = Date.now();
+        if ((now - lastSent) >= 500) {
+            lastSent = now;
+            await sendState(reason);
+            return;
+        }
+        pending = true;
+        await sleep(550);
+        if (pending) {
+            pending = false;
+            lastSent = Date.now();
+            await sendState("throttled");
+        }
+    }
+
+    document.getElementById('connectBtn').onclick = async () => {
+        const roomCode = norm(document.getElementById('roomCode').value);
+        const masterKey = document.getElementById('masterKey').value;
+        const audioUrl = (document.getElementById('audioUrl').value || "").trim();
+        const videoUrl = (document.getElementById('videoUrl').value || "").trim();
+
+        if (!roomCode) { alert("Preencha Room Code."); return; }
+        if (!masterKey) { alert("Preencha MasterKey."); return; }
+        if (!audioUrl || !videoUrl) { alert("Faça o upload primeiro (precisamos de Audio e Video URL)."); return; }
+
+        // ✅ Use o IP também no Hub (evita mistura de origens)
+        const hubUrl = PUBLIC_ORIGIN + "/hubs/rooms";
+
+        conn = new signalR.HubConnectionBuilder()
+            .withUrl(hubUrl)
+            .withAutomaticReconnect()
+            .build();
+
+        conn.onclose(() => setStatus("desconectado"));
+        conn.onreconnecting(() => setStatus("reconectando..."));
+        conn.onreconnected(() => setStatus("conectado"));
+
+        await conn.start();
+        setStatus("conectado");
+        log("connected:", hubUrl);
+
+        await conn.invoke("JoinAsController", roomCode, masterKey);
+        log("joined as controller:", roomCode);
+
+        await scheduleSend("connect");
+    };
+
+    // ===== Controls =====
+    document.getElementById('playBtn').onclick = async () => {
+        await video.play();
+        await scheduleSend("playBtn");
+    };
+
+    document.getElementById('pauseBtn').onclick = async () => {
+        video.pause();
+        await scheduleSend("pauseBtn");
+    };
+
+    document.getElementById('seekBtn').onclick = async () => {
+        const v = parseInt(document.getElementById('seekMs').value, 10);
+        if (!Number.isFinite(v)) { alert("Seek inválido"); return; }
+        video.currentTime = v / 1000;
+        await scheduleSend("seekBtn");
+    };
+
+    // eventos (sem spam de timeupdate)
+    video.addEventListener('play', () => scheduleSend("play"));
+    video.addEventListener('pause', () => scheduleSend("pause"));
+    video.addEventListener('seeking', () => scheduleSend("seeking"));
+    video.addEventListener('seeked', () => scheduleSend("seeked"));
+
+    // ✅ tick enquanto está tocando: mantém estado vivo e telão reaberto sincroniza certinho
+    setInterval(() => {
+        if (!conn) return;
+        if (video.paused || video.ended) return;
+        scheduleSend("tick");
+    }, 2000);
+</script>
+</body>
+</html>

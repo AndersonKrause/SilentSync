@@ -28,38 +28,60 @@ public class MediaController(IWebHostEnvironment env, IConfiguration config) : C
         await using (var fs = System.IO.File.Create(inputPath))
             await file.CopyToAsync(fs);
 
-        // ✅ Gera MP3 (funciona no Android/Chrome)
-        var mp3Path = Path.Combine(outDir, "audio.mp3");
-
-        var args =
-            $"-y -i \"{inputPath}\" -vn -c:a libmp3lame -b:a 128k -ac 2 -ar 44100 \"{mp3Path}\"";
-
         var ffmpegPath = config["Tools:FFmpegPath"];
         if (string.IsNullOrWhiteSpace(ffmpegPath))
             ffmpegPath = "ffmpeg";
 
-        var p = new Process
+        // ✅ 1) gera/normaliza vídeo para um caminho servido pelo /media
+        // Tentamos remux (rápido). Se falhar, fazemos reencode básico.
+        var videoOnDisk = Path.Combine(outDir, "video.mp4");
+
+        async Task<(int code, string stderr)> RunFfmpeg(string args)
         {
-            StartInfo = new ProcessStartInfo
+            var p = new Process
             {
-                FileName = ffmpegPath,
-                Arguments = args,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ffmpegPath,
+                    Arguments = args,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
 
-        p.Start();
-        var stderr = await p.StandardError.ReadToEndAsync();
-        await p.WaitForExitAsync();
+            p.Start();
+            var stderr = await p.StandardError.ReadToEndAsync();
+            await p.WaitForExitAsync();
+            return (p.ExitCode, stderr);
+        }
 
-        if (p.ExitCode != 0)
-            return Problem($"ffmpeg failed: {stderr}");
+        // remux (sem reencode)
+        var remuxArgs = $"-y -i \"{inputPath}\" -c copy \"{videoOnDisk}\"";
+        var (remuxCode, remuxErr) = await RunFfmpeg(remuxArgs);
 
-        // ✅ devolve path relativo (o front monta URL com window.location.origin)
+        if (remuxCode != 0)
+        {
+            // fallback reencode
+            var reencodeArgs = $"-y -i \"{inputPath}\" -c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k \"{videoOnDisk}\"";
+            var (reCode, reErr) = await RunFfmpeg(reencodeArgs);
+            if (reCode != 0)
+                return Problem($"ffmpeg video failed: {remuxErr}\n---fallback---\n{reErr}");
+        }
+
+        // ✅ 2) Gera MP3 (igual você já fazia, mas a partir do video.mp4)
+        var mp3Path = Path.Combine(outDir, "audio.mp3");
+        var audioArgs = $"-y -i \"{videoOnDisk}\" -vn -c:a libmp3lame -b:a 128k -ac 2 -ar 44100 \"{mp3Path}\"";
+        var (audioCode, audioErr) = await RunFfmpeg(audioArgs);
+
+        if (audioCode != 0)
+            return Problem($"ffmpeg audio failed: {audioErr}");
+
+        // ✅ devolve paths relativos servidos por /media (Program.cs já mapeia!)
         var audioPath = $"/media/{mediaId}/audio.mp3";
-        return Ok(new { mediaId, audioPath });
+        var videoPath = $"/media/{mediaId}/video.mp4";
+
+        return Ok(new { mediaId, audioPath, videoPath });
     }
 }

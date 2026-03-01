@@ -1,0 +1,195 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>SilentSync - Registro</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 860px; }
+        h2 { margin: 0 0 12px 0; }
+        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; background:#fff; }
+        label { display:block; font-weight:700; margin-top: 10px; }
+        input, button { padding: 10px; width: 100%; margin: 6px 0; }
+        button { cursor:pointer; }
+        .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
+        .row { display:grid; gap:10px; grid-template-columns: 1fr; }
+        .two { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+        @media (max-width: 520px){ .two { grid-template-columns: 1fr; } }
+        .small { font-size: 12px; opacity: .85; }
+        .ok { color:#0a7; font-weight:700; }
+        .err { color:#c22; font-weight:700; }
+        .warn { color:#b80; font-weight:700; }
+        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 260px; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    </style>
+</head>
+<body>
+<h2>Registro / Login <span id="status" class="pill">pronto</span></h2>
+
+<div class="card">
+    <div class="small">
+        Sala: <span id="roomText" class="mono">—</span>
+    </div>
+
+    <label>Email</label>
+    <input id="email" placeholder="you@email.com" autocomplete="email"/>
+
+    <div class="two">
+        <button id="requestCodeBtn">Enviar código</button>
+        <button id="goMobileBtn" disabled>Ir para o áudio</button>
+    </div>
+
+    <label>Código</label>
+    <input id="code" placeholder="ex: 963305" inputmode="numeric"/>
+
+    <button id="verifyBtn">Verificar e entrar</button>
+
+    <div id="info" class="small"></div>
+</div>
+
+<pre id="log" style="display:none"></pre>
+
+<script>
+    // ===== Config/Helpers =====
+    const LS = {
+        token: "ss_token",
+        email: "ss_email"
+    };
+
+    const qs = new URLSearchParams(location.search);
+    const ROOM = (qs.get("room") || "").trim().toUpperCase();
+
+    const statusEl = document.getElementById("status");
+    const roomText = document.getElementById("roomText");
+    const infoEl = document.getElementById("info");
+    const logEl = document.getElementById("log");
+
+    const emailEl = document.getElementById("email");
+    const codeEl = document.getElementById("code");
+    const requestCodeBtn = document.getElementById("requestCodeBtn");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const goMobileBtn = document.getElementById("goMobileBtn");
+
+    function log(...a){
+        logEl.style.display = "block";
+        logEl.textContent += a.map(x => typeof x === "string" ? x : JSON.stringify(x,null,2)).join(" ") + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    function setStatus(t){ statusEl.textContent = t; }
+
+    function getToken(){ return localStorage.getItem(LS.token) || ""; }
+    function setToken(t){
+        if(t) localStorage.setItem(LS.token, t);
+        else localStorage.removeItem(LS.token);
+    }
+
+    function mobileUrl(){
+        // Mantém a sala na URL do mobile
+        const base = `${location.origin}/mobile.html`;
+        return ROOM ? `${base}?room=${encodeURIComponent(ROOM)}` : base;
+    }
+
+    async function api(path, { method="GET", body=null } = {}){
+        const headers = {};
+        if (body) headers["Content-Type"] = "application/json";
+
+        const res = await fetch(location.origin + path, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch {}
+
+        if (!res.ok) {
+            const msg = (json && (json.message || json.title)) || text || ("HTTP " + res.status);
+            throw new Error(msg);
+        }
+        return json;
+    }
+
+    function updateUi(){
+        roomText.textContent = ROOM || "(sem room)";
+        const logged = !!getToken();
+        goMobileBtn.disabled = !logged;
+
+        if (!ROOM) {
+            infoEl.innerHTML = "<span class='warn'>Sem room na URL. Use: register.html?room=ABC123</span>";
+        } else if (logged) {
+            infoEl.innerHTML = "<span class='ok'>Você já está logado ✅</span>";
+        } else {
+            infoEl.innerHTML = "<span class='warn'>Faça login para liberar o áudio.</span>";
+        }
+    }
+
+    // ===== Actions =====
+    requestCodeBtn.onclick = async () => {
+        const email = (emailEl.value || "").trim().toLowerCase();
+        if(!email) return alert("Preencha o email");
+
+        localStorage.setItem(LS.email, email);
+        setStatus("enviando...");
+        infoEl.textContent = "Enviando código...";
+
+        try{
+            await api("/api/auth/request-code", { method:"POST", body:{ email } });
+            infoEl.innerHTML = "<span class='ok'>Código enviado. Verifique seu email.</span>";
+            setStatus("código enviado");
+        }catch(e){
+            infoEl.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            setStatus("erro");
+            log("request-code ERROR:", e.message || e);
+        }
+    };
+
+    verifyBtn.onclick = async () => {
+        const email = ((emailEl.value || localStorage.getItem(LS.email) || "")).trim().toLowerCase();
+        const code = (codeEl.value || "").trim();
+
+        if(!ROOM) return alert("Sem room na URL (register.html?room=ABC123).");
+        if(!email) return alert("Preencha o email");
+        if(!code) return alert("Preencha o código");
+
+        setStatus("verificando...");
+        infoEl.textContent = "Verificando...";
+
+        try{
+            const r = await api("/api/auth/verify-code", { method:"POST", body:{ email, code } });
+            if(!r?.token) throw new Error("Resposta sem token");
+
+            setToken(r.token);
+            infoEl.innerHTML = "<span class='ok'>Logado ✅ Redirecionando…</span>";
+            setStatus("logado");
+
+            // Vai para o mobile com a sala já preenchida
+            location.href = mobileUrl();
+        }catch(e){
+            infoEl.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            setStatus("erro");
+            log("verify-code ERROR:", e.message || e);
+        }
+    };
+
+    goMobileBtn.onclick = () => {
+        if(!ROOM) return alert("Sem room na URL.");
+        location.href = mobileUrl();
+    };
+
+    // ===== Init =====
+    (function init(){
+        emailEl.value = localStorage.getItem(LS.email) || "";
+
+        // Se já estiver logado e tiver room, manda direto pro mobile (UX top)
+        if(getToken() && ROOM){
+            infoEl.innerHTML = "<span class='ok'>Logado ✅ Indo para o áudio…</span>";
+            setTimeout(() => location.href = mobileUrl(), 350);
+        }
+
+        updateUi();
+    })();
+</script>
+</body>
+</html>

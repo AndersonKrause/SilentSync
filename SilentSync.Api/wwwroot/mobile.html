@@ -6,63 +6,105 @@
     <title>SilentSync - Mobile</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, Arial; margin: 16px; max-width: 760px; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 820px; }
         input, button { padding: 10px; width: 100%; margin: 6px 0; }
-        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+        button { cursor:pointer; }
+        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; margin-bottom: 12px; background:#fff; }
         .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
-        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 240px; }
+        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 260px; }
         audio { width: 100%; margin-top: 8px; }
-        .row { display: grid; gap: 10px; grid-template-columns: 1fr; }
-        .small { font-size: 12px; opacity: .8; }
+        .small { font-size: 12px; opacity: .85; }
+        .ok { color:#0a7; font-weight:700; }
+        .err { color:#c22; font-weight:700; }
+        .warn { color:#b80; font-weight:700; }
+        .two { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+        @media (max-width: 520px){ .two { grid-template-columns: 1fr; } }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     </style>
 </head>
 <body>
 <h2>Mobile <span id="status" class="pill">desconectado</span></h2>
 
-<div class="card">
-    <label>Room Code</label>
-    <input id="roomCode" placeholder="6 Digits Code"/>
+<!-- AUTH -->
+<div class="card" id="authCard">
+    <h3 style="margin:0 0 8px 0;">Login</h3>
 
-    <label>MemberId (GUID do join-room no Swagger)</label>
-    <input id="memberId" placeholder="cole o memberId"/>
+    <label>Email</label>
+    <input id="email" placeholder="you@email.com" autocomplete="email"/>
 
-    <button id="connectBtn">Conectar</button>
-
-    <div class="small">
-        Dica: alguns celulares bloqueiam autoplay. Se não tocar, use o botão “Play áudio”.
+    <div class="two">
+        <button id="requestCodeBtn">Enviar código</button>
+        <button id="logoutBtn" disabled>Sair</button>
     </div>
+
+    <label>Código</label>
+    <input id="code" placeholder="ex: 963305" inputmode="numeric"/>
+
+    <button id="verifyBtn">Verificar e logar</button>
+
+    <div id="authInfo" class="small"></div>
 </div>
 
+<!-- JOIN ROOM -->
 <div class="card">
+    <h3 style="margin:0 0 8px 0;">Entrar na sala</h3>
+
+    <label>Room Code</label>
+    <input id="roomCode" placeholder="6 digits"/>
+
+    <label>Display Name</label>
+    <input id="displayName" placeholder="Seu nome (ex: Bruna)"/>
+
+    <button id="joinBtn" disabled>Entrar na sala</button>
+
+    <div class="small">
+        O app guarda um <b>deviceId</b> no navegador do celular para você não “criar outro usuário” toda vez.
+    </div>
+
+    <div id="joinInfo" class="small"></div>
+</div>
+
+<!-- PLAYER -->
+<div class="card">
+    <h3 style="margin:0 0 8px 0;">Áudio sincronizado</h3>
+
     <div>Offset (ms): <b id="offset">?</b> | RTT (ms): <b id="rtt">?</b></div>
     <div>Target position (ms): <b id="targetPos">?</b></div>
 
     <div style="margin-top:8px">
         <div><b>Audio URL:</b></div>
-        <div id="audioUrlText" style="word-break:break-all; font-size:12px;"></div>
+        <div id="audioUrlText" class="mono" style="word-break:break-all; font-size:12px;"></div>
     </div>
 
     <audio id="audio" controls playsinline></audio>
-    <button id="playBtn" disabled>Play áudio</button>
+
+    <button id="playBtn" disabled>Play áudio (manual)</button>
+
+    <div class="small">
+        Dica: alguns celulares bloqueiam autoplay. Se não tocar, use o botão acima.
+    </div>
 </div>
 
 <pre id="log"></pre>
 
 <!-- SignalR -->
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-<!-- HLS (necessário no Chrome/Android) -->
+<!-- HLS for Android/Chrome -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
 
 <script>
+    // ========= Helpers =========
     const statusEl = document.getElementById('status');
     const logEl = document.getElementById('log');
     const offsetEl = document.getElementById('offset');
     const rttEl = document.getElementById('rtt');
     const targetPosEl = document.getElementById('targetPos');
     const audioUrlText = document.getElementById('audioUrlText');
-
     const audio = document.getElementById('audio');
     const playBtn = document.getElementById('playBtn');
+
+    const authInfo = document.getElementById('authInfo');
+    const joinInfo = document.getElementById('joinInfo');
 
     const norm = (s) => (s || "").trim().toUpperCase();
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -73,51 +115,181 @@
     }
     function setStatus(s){ statusEl.textContent = s; }
     function nowMs(){ return Date.now(); }
-    function serverNowMs(){ return nowMs() + serverOffsetMs; }
+
+    function getBaseUrl(){
+        // sempre usa o mesmo host que você abriu no celular (IP do PC)
+        return window.location.origin;
+    }
+
+    // Troca "localhost" por host real (IP do PC) quando necessário
+    function normalizeMediaUrl(input){
+        if (!input) return "";
+        try {
+            const u = new URL(input, window.location.origin);
+            if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+                u.protocol = window.location.protocol;
+                u.host = window.location.host;
+            }
+            return u.toString();
+        } catch {
+            return input;
+        }
+    }
+
+    // ========= Local Storage =========
+    const LS = {
+        token: "ss_token",
+        email: "ss_email",
+        deviceId: "ss_deviceId",
+        displayName: "ss_displayName",
+        roomCode: "ss_roomCode",
+        memberIdByRoom: (room) => `ss_memberId_${room}`
+    };
+
+    function getOrCreateDeviceId(){
+        let id = localStorage.getItem(LS.deviceId);
+        if (!id) {
+            id = (crypto?.randomUUID?.() || (Date.now() + "-" + Math.random().toString(16).slice(2)));
+            localStorage.setItem(LS.deviceId, id);
+        }
+        return id;
+    }
+
+    function setToken(t){
+        if (t) localStorage.setItem(LS.token, t);
+        else localStorage.removeItem(LS.token);
+        updateUiAuth();
+    }
+    function getToken(){
+        return localStorage.getItem(LS.token) || "";
+    }
+
+    function updateUiAuth(){
+        const logged = !!getToken();
+        document.getElementById('logoutBtn').disabled = !logged;
+        document.getElementById('joinBtn').disabled = !logged;
+
+        authInfo.innerHTML = logged
+            ? "<span class='ok'>Logado ✅</span>"
+            : "<span class='warn'>Não logado</span>";
+    }
+
+    // ========= API =========
+    async function api(path, { method="GET", body=null, auth=false } = {}){
+        const headers = {};
+        if (body) headers["Content-Type"] = "application/json";
+        if (auth) headers["Authorization"] = "Bearer " + getToken();
+
+        const res = await fetch(getBaseUrl() + path, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+
+        const text = await res.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch {}
+
+        if (!res.ok) {
+            const msg = (json && (json.message || json.title)) || text || ("HTTP " + res.status);
+            throw new Error(msg);
+        }
+        return json;
+    }
+
+    // ========= AUTH FLOW =========
+    document.getElementById('requestCodeBtn').onclick = async () => {
+        const email = document.getElementById('email').value.trim();
+        if (!email) return alert("Preencha o email");
+
+        localStorage.setItem(LS.email, email);
+        authInfo.textContent = "Enviando código...";
+
+        try {
+            await api("/api/auth/request-code", { method:"POST", body:{ email } });
+            authInfo.innerHTML = "<span class='ok'>Código enviado. Verifique seu email.</span>";
+            log("request-code OK:", email);
+        } catch(e){
+            authInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("request-code ERROR:", e.message || e);
+        }
+    };
+
+    document.getElementById('verifyBtn').onclick = async () => {
+        const email = (document.getElementById('email').value || localStorage.getItem(LS.email) || "").trim();
+        const code = document.getElementById('code').value.trim();
+        if (!email) return alert("Preencha o email");
+        if (!code) return alert("Preencha o código");
+
+        authInfo.textContent = "Verificando...";
+
+        try {
+            const r = await api("/api/auth/verify-code", { method:"POST", body:{ email, code } });
+            if (!r?.token) throw new Error("Resposta sem token");
+            setToken(r.token);
+            authInfo.innerHTML = "<span class='ok'>Logado ✅</span>";
+            log("verify-code OK (token recebido)");
+        } catch(e){
+            authInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("verify-code ERROR:", e.message || e);
+        }
+    };
+
+    document.getElementById('logoutBtn').onclick = () => {
+        setToken("");
+        joinInfo.textContent = "";
+        setStatus("desconectado");
+    };
+
+    // ========= JOIN ROOM =========
+    let roomCodeCurrent = "";
+    let memberIdCurrent = "";
+    let conn = null;
+    let heartbeatTimer = null;
+
+    document.getElementById('joinBtn').onclick = async () => {
+        const roomCode = norm(document.getElementById('roomCode').value);
+        const displayName = document.getElementById('displayName').value.trim();
+        const deviceId = getOrCreateDeviceId();
+
+        if (!roomCode) return alert("Preencha Room Code");
+        if (!displayName) return alert("Preencha Display Name");
+
+        localStorage.setItem(LS.displayName, displayName);
+        localStorage.setItem(LS.roomCode, roomCode);
+
+        joinInfo.textContent = "Entrando na sala...";
+
+        try {
+            // Seu backend tem join-auth (Authorize). É o que você quer após registro.
+            const r = await api(`/api/rooms/${roomCode}/join-auth`, {
+                method: "POST",
+                auth: true,
+                body: { displayName, deviceId }
+            });
+
+            memberIdCurrent = r.memberId;
+            roomCodeCurrent = r.roomCode || roomCode;
+            localStorage.setItem(LS.memberIdByRoom(roomCodeCurrent), memberIdCurrent);
+
+            joinInfo.innerHTML = "<span class='ok'>Entrou ✅</span> memberId=" + memberIdCurrent;
+            log("join-auth OK:", r);
+
+            await connectSignalR(roomCodeCurrent, memberIdCurrent);
+        } catch(e){
+            joinInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("join-auth ERROR:", e.message || e);
+        }
+    };
+
+    // ========= SignalR + Time Sync =========
+    let serverOffsetMs = 0;
+    let lastState = null;
 
     function computeOffset(t0, t1, t2, t3) {
         const offset = ((t1 - t0) + (t2 - t3)) / 2;
         const rtt = (t3 - t0) - (t2 - t1);
         return { offset, rtt };
-    }
-
-    let conn = null;
-    let serverOffsetMs = 0;
-    let lastState = null;
-
-    // HLS handling
-    let hls = null;
-    let currentAudioUrl = "";
-
-    function setAudioSource(url) {
-        // limpa
-        if (hls) { hls.destroy(); hls = null; }
-        audio.pause();
-        audio.removeAttribute("src");
-        audio.load();
-
-        const isM3u8 = url.toLowerCase().includes(".m3u8");
-
-        // iOS/Safari: HLS nativo
-        if (isM3u8 && audio.canPlayType("application/vnd.apple.mpegurl")) {
-            audio.src = url;
-            return;
-        }
-
-        // Chrome/Android: HLS via hls.js
-        if (isM3u8 && window.Hls && Hls.isSupported()) {
-            hls = new Hls({ lowLatencyMode: true });
-            hls.loadSource(url);
-            hls.attachMedia(audio);
-
-            hls.on(Hls.Events.ERROR, (evt, data) => {
-                log("HLS error:", data?.type, data?.details, data?.fatal ? "(fatal)" : "");
-            });
-            return;
-        }
-
-        // fallback (mp3/mp4/m4a/aac direct)
-        audio.src = url;
     }
 
     async function timeSync(samples = 10) {
@@ -134,10 +306,46 @@
         return results[0];
     }
 
+    function serverNowMs(){ return nowMs() + serverOffsetMs; }
+
     function calcTargetPositionMs(state) {
         const now = serverNowMs();
         if (!state.isPlaying) return state.positionMs;
         return Math.max(0, state.positionMs + (now - state.serverTimeMs));
+    }
+
+    // ========= Audio source (HLS/MP3) =========
+    let hls = null;
+    let currentAudioUrl = "";
+
+    function setAudioSource(url) {
+        if (hls) { hls.destroy(); hls = null; }
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+
+        const isM3u8 = url.toLowerCase().includes(".m3u8");
+
+        // iOS/Safari: HLS nativo
+        if (isM3u8 && audio.canPlayType("application/vnd.apple.mpegurl")) {
+            audio.src = url;
+            return;
+        }
+
+        // Android/Chrome: HLS via hls.js
+        if (isM3u8 && window.Hls && Hls.isSupported()) {
+            hls = new Hls({ lowLatencyMode: true });
+            hls.loadSource(url);
+            hls.attachMedia(audio);
+
+            hls.on(Hls.Events.ERROR, (evt, data) => {
+                log("HLS error:", data?.type, data?.details, data?.fatal ? "(fatal)" : "");
+            });
+            return;
+        }
+
+        // fallback MP3/other
+        audio.src = url;
     }
 
     async function applyState(state, reason) {
@@ -148,25 +356,20 @@
             return;
         }
 
-        // IMPORTANTE:
-        // - Se o estado vier com "/media/....", isso vira URL absoluta do host que o celular abriu (IP do seu PC).
-        // - Se vier com "https://localhost...", no celular vai quebrar (localhost = celular).
-        const absoluteAudioUrl = new URL(state.audioUrl, window.location.origin).toString();
+        const abs = normalizeMediaUrl(state.audioUrl);
+        audioUrlText.textContent = abs;
 
-        audioUrlText.textContent = absoluteAudioUrl;
-
-        if (currentAudioUrl !== absoluteAudioUrl) {
-            currentAudioUrl = absoluteAudioUrl;
-            setAudioSource(absoluteAudioUrl);
-            log("audio src set:", absoluteAudioUrl);
+        if (currentAudioUrl !== abs) {
+            currentAudioUrl = abs;
+            setAudioSource(abs);
+            log("audio src set:", abs);
             playBtn.disabled = false;
         }
 
         const target = calcTargetPositionMs(state);
         targetPosEl.textContent = String(Math.floor(target));
 
-        // se audio não carregou nada ainda, evita loop de seek
-        if (audio.readyState < 2) { // HAVE_CURRENT_DATA
+        if (audio.readyState < 2) {
             log("audio ainda carregando (readyState<2), esperando...", reason);
             return;
         }
@@ -174,7 +377,6 @@
         const current = audio.currentTime * 1000;
         const diff = target - current;
 
-        // seek "duro" se diferença grande
         if (Math.abs(diff) > 350) {
             audio.currentTime = target / 1000;
             log("seek hard:", reason, "diff(ms)=", Math.floor(diff));
@@ -188,7 +390,7 @@
         }
     }
 
-    // drift fix (só se estiver tocando)
+    // drift fix (apenas tocando)
     setInterval(() => {
         if (!lastState) return;
         if (!lastState.isPlaying) return;
@@ -198,7 +400,6 @@
         const current = audio.currentTime * 1000;
         const diff = target - current;
 
-        // ajustes pequenos
         if (Math.abs(diff) > 180) {
             audio.currentTime = target / 1000;
             log("drift fix diff(ms)=", Math.floor(diff));
@@ -209,28 +410,48 @@
         try {
             await audio.play();
             log("play manual OK");
-        } catch (e) {
+        } catch(e){
             log("play manual falhou:", e?.message || e);
         }
     };
 
-    document.getElementById('connectBtn').onclick = async () => {
-        const roomCode = norm(document.getElementById('roomCode').value);
-        const memberId = document.getElementById('memberId').value.trim();
+    async function connectSignalR(roomCode, memberId){
+        // derruba conexão anterior
+        if (conn) {
+            try { await conn.stop(); } catch {}
+            conn = null;
+        }
+        if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+        }
 
-        if (!roomCode) return alert("Preencha Room Code");
-        if (!memberId) return alert("Cole o memberId (por enquanto)");
+        setStatus("conectando...");
 
-        const hubUrl = window.location.origin + "/hubs/rooms";
+        const hubUrl = getBaseUrl() + "/hubs/rooms";
 
         conn = new signalR.HubConnectionBuilder()
-            .withUrl(hubUrl)
+            .withUrl(hubUrl, { accessTokenFactory: () => getToken() })
             .withAutomaticReconnect()
             .build();
 
         conn.onclose(() => setStatus("desconectado"));
         conn.onreconnecting(() => setStatus("reconectando..."));
-        conn.onreconnected(() => setStatus("conectado"));
+
+        // ✅ UM ÚNICO onreconnected
+        conn.onreconnected(async () => {
+            setStatus("conectado");
+            try {
+                // ✅ reentra no grupo após reconexão
+                await conn.invoke("JoinRoom", roomCode, memberId);
+
+                // ✅ puxa o estado atual e reaplica (volta o áudio)
+                const state = await conn.invoke("GetPlayerState", roomCode);
+                await applyState(state, "reconnected-pull");
+            } catch (e) {
+                log("reconnected flow ERROR:", e?.message || e);
+            }
+        });
 
         conn.on("playerStateChanged", (state) => {
             log("playerStateChanged:", state);
@@ -241,22 +462,49 @@
         setStatus("conectado");
         log("connected:", hubUrl);
 
-        // 1) sync clock
+        // clock sync
         const best = await timeSync(10);
         serverOffsetMs = best.offset;
         offsetEl.textContent = best.offset.toFixed(1);
         rttEl.textContent = best.rtt.toFixed(1);
         log("timeSync best:", best);
 
-        // 2) join room group
+        // join group
         await conn.invoke("JoinRoom", roomCode, memberId);
         log("joined room:", roomCode);
 
-        // 3) pull state
+        // ✅ heartbeat para activeCount
+        heartbeatTimer = setInterval(async () => {
+            try { await conn.invoke("Heartbeat", roomCode, memberId); } catch {}
+        }, 30000);
+
+        // pull current state
         const state = await conn.invoke("GetPlayerState", roomCode);
         log("GetPlayerState:", state);
         await applyState(state, "pull");
-    };
+    }
+
+    // ========= Init (restore form + room from querystring) =========
+    (function init(){
+        const qsRoom = new URLSearchParams(location.search).get("room");
+        if (qsRoom) {
+            document.getElementById('roomCode').value = norm(qsRoom);
+            localStorage.setItem(LS.roomCode, norm(qsRoom));
+        } else {
+            document.getElementById('roomCode').value = localStorage.getItem(LS.roomCode) || "";
+        }
+
+        document.getElementById('email').value = localStorage.getItem(LS.email) || "";
+        document.getElementById('displayName').value = localStorage.getItem(LS.displayName) || "";
+
+        getOrCreateDeviceId();
+        updateUiAuth();
+
+        // Se já estiver logado, dica mais clara
+        if (getToken()) {
+            authInfo.innerHTML = "<span class='ok'>Logado ✅</span>";
+        }
+    })();
 </script>
 </body>
 </html>

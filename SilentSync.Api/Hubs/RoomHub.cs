@@ -110,6 +110,7 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
         bool IsPlaying,
         long PositionMs,
         string AudioUrl,
+        string VideoUrl,
         string? MasterKey
     );
     
@@ -122,13 +123,7 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
             return state;
 
         // default (se ainda não foi setado pelo telão)
-        return new PlayerState(
-            RoomCode: roomCode,
-            IsPlaying: false,
-            PositionMs: 0,
-            ServerTimeMs: NowMs(),
-            AudioUrl: ""
-        );
+        return new PlayerState(roomCode, false, 0, NowMs(), "", "");
     }
 
     [HubMethodName("UpdatePlayerState")]
@@ -144,13 +139,15 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
 
         // servidor “carimba” o tempo do estado
         var audioUrl = NormalizeAudioUrl(req.AudioUrl);
+        var videoUrl = NormalizeAudioUrl(req.VideoUrl);
 
         var state = new PlayerState(
             RoomCode: roomCode,
             IsPlaying: req.IsPlaying,
             PositionMs: Math.Max(0, req.PositionMs),
             ServerTimeMs: NowMs(),
-            AudioUrl: audioUrl
+            AudioUrl: audioUrl,
+            VideoUrl: videoUrl
         );
 
         _stateByRoom[roomCode] = state;
@@ -170,5 +167,16 @@ public class RoomHub(AppDbContext db, IConfiguration config) : Hub
         var t2 = NowMs(); // server send time
         return new TimeSyncResponse(t0, t1, t2);
     }
+    
+    [HubMethodName("JoinScreen")]
+    public async Task JoinScreen(string roomCode)
+    {
+        roomCode = roomCode.Trim().ToUpperInvariant();
 
+        var exists = await db.Rooms.AnyAsync(r => r.Code == roomCode);
+        if (!exists) throw new HubException("Room not found.");
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, Group(roomCode));
+    }
+    
 }

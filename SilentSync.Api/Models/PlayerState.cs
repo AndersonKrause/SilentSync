@@ -5,5 +5,6 @@ public record PlayerState(
     bool IsPlaying,
     long PositionMs,
     long ServerTimeMs,
-    string AudioUrl
+    string AudioUrl,
+    string VideoUrl
 );

@@ -188,6 +188,15 @@ public class RoomsController : ControllerBase
 
         return NoContent();
     }
+    
+    [HttpGet("{code}")]
+    public async Task<IActionResult> Get(string code)
+    {
+        code = code.Trim().ToUpperInvariant();
+        var room = await _db.Rooms.SingleOrDefaultAsync(r => r.Code == code);
+        if (room is null) return NotFound();
+        return Ok(new { room.Id, room.Code });
+    }
 
     private static string GenerateRoomCode(int length)
     {
