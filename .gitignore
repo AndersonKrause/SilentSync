@@ -49,3 +49,6 @@ logs/
 # =========================
 appsettings.Development.json
 secrets.json
+
+*.mp3
+*.mp4
