@@ -13,13 +13,17 @@ namespace SilentSync.Api.Controllers;
 public class RoomsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public RoomsController(AppDbContext db) => _db = db;
     public record JoinRoomRequest(string DisplayName, string DeviceId);
-    private const int MaxMembers = 500;
-    private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
     public record HeartbeatRequest(Guid MemberId);
     public record JoinRoomAuthRequest(string DisplayName, string DeviceId);
     
+    private const int MaxMembers = 500;
+    private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
+    
+    public RoomsController(AppDbContext db)
+    {
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create()
@@ -198,6 +202,19 @@ public class RoomsController : ControllerBase
         return Ok(new { room.Id, room.Code });
     }
 
+    [HttpDelete("{id:guid}/delete/room")]
+    public async Task<IActionResult> DeleteRoom(Guid id)
+    {
+        var deletedRoom = await _db.Rooms.SingleOrDefaultAsync(r => r.Id == id);
+        if (deletedRoom is null)
+        {
+            return NotFound("Room not found.");
+        }
+        _db.Rooms.Remove(deletedRoom);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+    
     private static string GenerateRoomCode(int length)
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
