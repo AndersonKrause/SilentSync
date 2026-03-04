@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SilentSync.Api.Data;
@@ -12,73 +13,71 @@ namespace SilentSync.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(AppDbContext db, IConfiguration cfg, IEmailSender email) : ControllerBase
+public class AuthController : ControllerBase
 {
-    public record RequestCodeRequest(string Email);
-    public record VerifyCodeRequest(string Email, string Code);
+    private readonly AppDbContext _db;
+    private readonly IConfiguration _cfg;
+    private readonly IEmailSender _email;
 
-    [HttpPost("request-code")]
-    public async Task<IActionResult> RequestCode([FromBody] RequestCodeRequest req)
+    public AuthController(AppDbContext db, IConfiguration cfg, IEmailSender email)
     {
-        var emailAddr = (req.Email ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(emailAddr) || !emailAddr.Contains("@"))
-            return BadRequest("Invalid email.");
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _cfg = cfg ?? throw new ArgumentNullException(nameof(cfg));
+        _email = email ?? throw new ArgumentNullException(nameof(email));
+    }
 
-        // 6 digits
+    private static readonly PasswordHasher<AppUser> Hasher = new();
+
+    public record RegisterStartRequest(string Email, string Password);
+    public record RegisterCompleteRequest(string Email, string Code);
+
+    public record LoginRequest(string Email, string Password);
+    public record RequestCodeRequest(string Email);
+
+    public record ForgotPasswordRequest(string Email);
+    public record ResetPasswordRequest(string Email, string Code, string NewPassword);
+
+    // ========= helpers =========
+    private static string NormEmail(string s) => (s ?? "").Trim().ToLowerInvariant();
+
+    private async Task<string> SendLoginCodeAsync(string emailAddr)
+    {
+        // (opcional) rate limit simples
+        var now = DateTime.UtcNow;
+        var recent = await _db.LoginCodes.CountAsync(x => x.Email == emailAddr && x.CreatedAtUtc > now.AddMinutes(-1));
+        if (recent >= 3) throw new InvalidOperationException("Too many codes. Try again in a minute.");
+
         var code = Random.Shared.Next(100000, 999999).ToString();
 
-        var lc = new LoginCode
+        _db.LoginCodes.Add(new LoginCode
         {
             Email = emailAddr,
             Code = code,
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(10),
-        };
+            ExpiresAtUtc = now.AddMinutes(10),
+        });
 
-        db.LoginCodes.Add(lc);
-        await db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
 
-        await email.SendAsync(emailAddr, "Your SilentSync login code", $"Your code is: {code} (valid for 10 minutes)");
-
-        return Ok(new { ok = true });
+        await _email.SendAsync(emailAddr, "SilentSync verification code", $"Your code is: {code} (valid for 10 minutes)");
+        return code;
     }
 
-    [HttpPost("verify-code")]
-    public async Task<IActionResult> VerifyCode([FromBody] VerifyCodeRequest req)
+    private async Task ConsumeValidCodeAsync(string emailAddr, string code)
     {
-        var emailAddr = (req.Email ?? "").Trim().ToLowerInvariant();
-        var code = (req.Code ?? "").Trim();
-
-        if (string.IsNullOrWhiteSpace(emailAddr) || string.IsNullOrWhiteSpace(code))
-            return BadRequest("Missing email or code.");
-
         var now = DateTime.UtcNow;
 
-        var lc = await db.LoginCodes
+        var lc = await _db.LoginCodes
             .Where(x => x.Email == emailAddr && x.Code == code && x.UsedAtUtc == null && x.ExpiresAtUtc > now)
             .OrderByDescending(x => x.CreatedAtUtc)
             .FirstOrDefaultAsync();
 
-        if (lc is null)
-            return Unauthorized("Invalid or expired code.");
+        if (lc is null) throw new UnauthorizedAccessException("Invalid or expired code.");
 
         lc.UsedAtUtc = now;
-
-        // get or create user
-        var user = await db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
-        if (user is null)
-        {
-            user = new AppUser { Email = emailAddr };
-            db.Users.Add(user);
-        }
-
-        await db.SaveChangesAsync();
-
-        var token = CreateJwt(user.Id, user.Email, cfg);
-
-        return Ok(new { token });
+        await _db.SaveChangesAsync();
     }
 
-    private static string CreateJwt(Guid userId, string email, IConfiguration cfg)
+    private static string CreateAccessJwt(Guid userId, string emailAddr, IConfiguration cfg)
     {
         var jwt = cfg.GetSection("Jwt");
         var key = jwt["Key"] ?? throw new Exception("Jwt:Key missing");
@@ -87,9 +86,10 @@ public class AuthController(AppDbContext db, IConfiguration cfg, IEmailSender em
 
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, email),
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(JwtRegisteredClaimNames.Email, emailAddr),
+            new("typ", "access"),
         };
 
         var creds = new SigningCredentials(
@@ -100,9 +100,203 @@ public class AuthController(AppDbContext db, IConfiguration cfg, IEmailSender em
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(30),
+            expires: DateTime.UtcNow.AddDays(30), // DEV
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    // ========= A) REGISTRO =========
+    // A1: email + senha -> salva PendingPasswordHash -> manda código
+    [HttpPost("register-start")]
+    public async Task<IActionResult> RegisterStart([FromBody] RegisterStartRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        var password = req.Password ?? "";
+
+        if (string.IsNullOrWhiteSpace(emailAddr) || !emailAddr.Contains("@"))
+            return BadRequest("Invalid email.");
+
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
+            return BadRequest("Password too short (min 6).");
+
+        var user = await _db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
+        if (user is null)
+        {
+            user = new AppUser { Email = emailAddr };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+        }
+
+        // já tem conta (senha definitiva)
+        if (!string.IsNullOrWhiteSpace(user.PasswordHash))
+            return Conflict("User already registered. Use login.");
+
+        // já existe cadastro pendente: NÃO sobrescreve a senha pendente
+        // só reenviamos o código
+        if (!string.IsNullOrWhiteSpace(user.PendingPasswordHash))
+        {
+            try { await SendLoginCodeAsync(emailAddr); }
+            catch (InvalidOperationException ex) { return StatusCode(429, ex.Message); }
+
+            return Ok(new { next = "verify-code", pending = true });
+        }
+
+        // cria o pending agora (primeira vez)
+        user.PendingPasswordHash = Hasher.HashPassword(user, password);
+        await _db.SaveChangesAsync();
+
+        try { await SendLoginCodeAsync(emailAddr); }
+        catch (InvalidOperationException ex) { return StatusCode(429, ex.Message); }
+
+        return Ok(new { next = "verify-code" });
+    }
+
+    // A2: email + code -> confirma -> PendingPasswordHash vira PasswordHash -> retorna token
+    [HttpPost("register-complete")]
+    public async Task<IActionResult> RegisterComplete([FromBody] RegisterCompleteRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        var code = (req.Code ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(emailAddr) || string.IsNullOrWhiteSpace(code))
+            return BadRequest("Missing email or code.");
+
+        var user = await _db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
+        if (user is null) return Unauthorized("User not found.");
+        if (string.IsNullOrWhiteSpace(user.PendingPasswordHash))
+            return BadRequest("No pending registration. Start registration again.");
+
+        try
+        {
+            await ConsumeValidCodeAsync(emailAddr, code);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+
+        user.PasswordHash = user.PendingPasswordHash;
+        user.PendingPasswordHash = null;
+        user.EmailVerifiedAtUtc ??= DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        return Ok(new { token });
+    }
+
+    // ========= B) LOGIN (B1) =========
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        var password = req.Password ?? "";
+
+        if (string.IsNullOrWhiteSpace(emailAddr) || string.IsNullOrWhiteSpace(password))
+            return BadRequest("Missing email or password.");
+
+        var user = await _db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
+        if (user is null) return Unauthorized("Wrong email or password.");
+        if (string.IsNullOrWhiteSpace(user.PasswordHash)) return Unauthorized("User has no password. Use register.");
+
+        var vr = Hasher.VerifyHashedPassword(user, user.PasswordHash, password);
+        if (vr == PasswordVerificationResult.Failed)
+            return Unauthorized("Wrong email or password.");
+
+        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        return Ok(new { token });
+    }
+
+    // ========= ESQUECI SENHA =========
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        if (string.IsNullOrWhiteSpace(emailAddr) || !emailAddr.Contains("@"))
+            return BadRequest("Invalid email.");
+
+        // por segurança, não vaza se existe ou não:
+        // mas em DEV podemos validar existência
+        var user = await _db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
+        if (user is null) return Ok(new { ok = true });
+
+        try
+        {
+            await SendLoginCodeAsync(emailAddr);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(429, ex.Message);
+        }
+
+        return Ok(new { next = "verify-code" });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        var code = (req.Code ?? "").Trim();
+        var newPassword = req.NewPassword ?? "";
+
+        if (string.IsNullOrWhiteSpace(emailAddr) || string.IsNullOrWhiteSpace(code))
+            return BadRequest("Missing email or code.");
+
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            return BadRequest("Password too short (min 6).");
+
+        var user = await _db.Users.SingleOrDefaultAsync(x => x.Email == emailAddr);
+        if (user is null) return Unauthorized("User not found.");
+
+        try
+        {
+            await ConsumeValidCodeAsync(emailAddr, code);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+
+        user.PasswordHash = Hasher.HashPassword(user, newPassword);
+        user.PendingPasswordHash = null;
+        user.EmailVerifiedAtUtc ??= DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        return Ok(new { token });
+    }
+
+    [HttpPost("request-code")]
+    public async Task<IActionResult> RequestCode([FromBody] RequestCodeRequest req)
+    {
+        var emailAddr = NormEmail(req.Email);
+        if (string.IsNullOrWhiteSpace(emailAddr) || !emailAddr.Contains("@"))
+            return BadRequest("Invalid email.");
+
+        try
+        {
+            await SendLoginCodeAsync(emailAddr);
+            return Ok(new { ok = true });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(429, ex.Message);
+        }
+    }
+
+    [HttpDelete("{id:guid}/delete/user")]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        var deletedUser = await _db.Users.SingleOrDefaultAsync(u => u.Id == id);
+        if (deletedUser is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        _db.Users.Remove(deletedUser);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 }

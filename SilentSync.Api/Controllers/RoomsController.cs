@@ -220,19 +220,6 @@ public class RoomsController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("{id:guid}/delete/user")]
-    public async Task<IActionResult> DeleteUser(Guid id)
-    {
-        var deletedUser = await _db.Users.SingleOrDefaultAsync(u => u.Id == id);
-        if (deletedUser is null)
-        {
-            return NotFound("User not found.");
-        }
-        _db.Users.Remove(deletedUser);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
-
 private static string GenerateRoomCode(int length)
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
