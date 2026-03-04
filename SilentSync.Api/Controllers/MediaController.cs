@@ -5,8 +5,16 @@ namespace SilentSync.Api.Controllers;
 
 [ApiController]
 [Route("api/media")]
-public class MediaController(IWebHostEnvironment env, IConfiguration config) : ControllerBase
+public class MediaController : ControllerBase
 {
+    private readonly IConfiguration _config;
+    private readonly IWebHostEnvironment _env;
+    public MediaController(IWebHostEnvironment env, IConfiguration config)
+    {
+        _env = env ?? throw new ArgumentNullException(nameof(env));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+    }
+    
     [HttpPost("upload")]
     [RequestSizeLimit(2_000_000_000)]
     public async Task<IActionResult> Upload(IFormFile file)
@@ -16,8 +24,8 @@ public class MediaController(IWebHostEnvironment env, IConfiguration config) : C
 
         var mediaId = Guid.NewGuid().ToString("N");
 
-        var uploadsDir = Path.Combine(env.ContentRootPath, "App_Data", "uploads");
-        var outDir = Path.Combine(env.ContentRootPath, "App_Data", "processed", mediaId);
+        var uploadsDir = Path.Combine(_env.ContentRootPath, "App_Data", "uploads");
+        var outDir = Path.Combine(_env.ContentRootPath, "App_Data", "processed", mediaId);
 
         Directory.CreateDirectory(uploadsDir);
         Directory.CreateDirectory(outDir);
@@ -28,11 +36,11 @@ public class MediaController(IWebHostEnvironment env, IConfiguration config) : C
         await using (var fs = System.IO.File.Create(inputPath))
             await file.CopyToAsync(fs);
 
-        var ffmpegPath = config["Tools:FFmpegPath"];
+        var ffmpegPath = _config["Tools:FFmpegPath"];
         if (string.IsNullOrWhiteSpace(ffmpegPath))
             ffmpegPath = "ffmpeg";
 
-        // ✅ 1) gera/normaliza vídeo para um caminho servido pelo /media
+        // 1) gera/normaliza vídeo para um caminho servido pelo /media
         // Tentamos remux (rápido). Se falhar, fazemos reencode básico.
         var videoOnDisk = Path.Combine(outDir, "video.mp4");
 
@@ -70,7 +78,7 @@ public class MediaController(IWebHostEnvironment env, IConfiguration config) : C
                 return Problem($"ffmpeg video failed: {remuxErr}\n---fallback---\n{reErr}");
         }
 
-        // ✅ 2) Gera MP3 (igual você já fazia, mas a partir do video.mp4)
+        // 2) Gera MP3 (igual você já fazia, mas a partir do video.mp4)
         var mp3Path = Path.Combine(outDir, "audio.mp3");
         var audioArgs = $"-y -i \"{videoOnDisk}\" -vn -c:a libmp3lame -b:a 128k -ac 2 -ar 44100 \"{mp3Path}\"";
         var (audioCode, audioErr) = await RunFfmpeg(audioArgs);
@@ -78,7 +86,7 @@ public class MediaController(IWebHostEnvironment env, IConfiguration config) : C
         if (audioCode != 0)
             return Problem($"ffmpeg audio failed: {audioErr}");
 
-        // ✅ devolve paths relativos servidos por /media (Program.cs já mapeia!)
+        // devolve paths relativos servidos por /media (Program.cs já mapeia!)
         var audioPath = $"/media/{mediaId}/audio.mp3";
         var videoPath = $"/media/{mediaId}/video.mp4";
 

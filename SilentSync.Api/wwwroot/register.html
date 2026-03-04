@@ -3,103 +3,169 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>SilentSync - Registro</title>
+    <title>SilentSync - Login</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, Arial; margin: 16px; max-width: 860px; }
-        h2 { margin: 0 0 12px 0; }
-        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; background:#fff; }
-        label { display:block; font-weight:700; margin-top: 10px; }
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 900px; }
         input, button { padding: 10px; width: 100%; margin: 6px 0; }
         button { cursor:pointer; }
+        .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px; margin-bottom: 12px; background:#fff; }
         .pill { display:inline-block; padding:2px 10px; border:1px solid #ccc; border-radius:999px; font-size:12px; }
-        .row { display:grid; gap:10px; grid-template-columns: 1fr; }
-        .two { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-        @media (max-width: 520px){ .two { grid-template-columns: 1fr; } }
         .small { font-size: 12px; opacity: .85; }
         .ok { color:#0a7; font-weight:700; }
         .err { color:#c22; font-weight:700; }
         .warn { color:#b80; font-weight:700; }
-        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 260px; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .two { display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+        @media (max-width: 640px){ .two { grid-template-columns: 1fr; } }
+        pre { background:#f6f6f6; padding:10px; border-radius:12px; overflow:auto; max-height: 220px; }
+        .tabs { display:flex; gap:8px; flex-wrap:wrap; }
+        .tab {
+            width:auto; padding:10px 12px; border-radius:999px;
+            border:1px solid #ddd; background:#fff;
+            font-weight:700;
+        }
+        .tab.active { border-color:#111; }
+        .hide { display:none !important; }
     </style>
 </head>
 <body>
-<h2>Registro / Login <span id="status" class="pill">pronto</span></h2>
+<h2>Login <span id="status" class="pill">pronto</span></h2>
 
 <div class="card">
-    <div class="small">
-        Sala: <span id="roomText" class="mono">—</span>
-    </div>
-
-    <label>Email</label>
-    <input id="email" placeholder="you@email.com" autocomplete="email"/>
-
-    <div class="two">
-        <button id="requestCodeBtn">Enviar código</button>
-        <button id="goMobileBtn" disabled>Ir para o áudio</button>
-    </div>
-
-    <label>Código</label>
-    <input id="code" placeholder="ex: 963305" inputmode="numeric"/>
-
-    <button id="verifyBtn">Verificar e entrar</button>
-
-    <div id="info" class="small"></div>
+    <div class="small">Sala: <b id="roomText">—</b></div>
+    <div class="small" style="margin-top:6px">Após autenticar, você será direcionado para o Mobile para ouvir o áudio.</div>
 </div>
 
-<pre id="log" style="display:none"></pre>
+<div class="card">
+    <div class="tabs">
+        <button id="tabLogin" class="tab active" type="button">Entrar</button>
+        <button id="tabCreate" class="tab" type="button">Criar conta</button>
+        <button id="tabForgot" class="tab" type="button">Esqueci a senha</button>
+    </div>
+</div>
+
+<!-- LOGIN (B1) -->
+<div class="card" id="panelLogin">
+    <h3 style="margin:0 0 8px 0;">Entrar</h3>
+
+    <label>Email</label>
+    <input id="loginEmail" placeholder="you@email.com" autocomplete="email"/>
+
+    <label>Senha</label>
+    <input id="loginPassword" type="password" placeholder="sua senha" autocomplete="current-password"/>
+
+    <button id="loginBtn">Entrar</button>
+
+    <div id="loginInfo" class="small"></div>
+</div>
+
+<!-- CREATE (A) Step 1 -->
+<div class="card hide" id="panelCreate1">
+    <h3 style="margin:0 0 8px 0;">Criar conta</h3>
+
+    <label>Email</label>
+    <input id="createEmail" placeholder="you@email.com" autocomplete="email"/>
+
+    <label>Senha</label>
+    <input id="createPw1" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
+
+    <label>Repita a senha</label>
+    <input id="createPw2" type="password" placeholder="repita a senha" autocomplete="new-password"/>
+
+    <button id="createStartBtn">Enviar código de verificação</button>
+
+    <div id="createInfo" class="small"></div>
+</div>
+
+<!-- CREATE (A) Step 2 -->
+<div class="card hide" id="panelCreate2">
+    <h3 style="margin:0 0 8px 0;">Confirmar código</h3>
+
+    <div class="small">Enviamos um código para <b id="createEmailEcho">—</b>.</div>
+
+    <label>Código (6 dígitos)</label>
+    <input id="createCode" inputmode="numeric" maxlength="6" placeholder="ex: 963305"/>
+
+    <div class="two">
+        <button id="createCompleteBtn">Confirmar e entrar</button>
+        <button id="createResendBtn" type="button">Reenviar código</button>
+    </div>
+
+    <div id="createCodeInfo" class="small"></div>
+</div>
+
+<!-- FORGOT Step 1 -->
+<div class="card hide" id="panelForgot1">
+    <h3 style="margin:0 0 8px 0;">Esqueci a senha</h3>
+
+    <label>Email</label>
+    <input id="forgotEmail" placeholder="you@email.com" autocomplete="email"/>
+
+    <button id="forgotSendBtn">Enviar código</button>
+
+    <div id="forgotInfo" class="small"></div>
+</div>
+
+<!-- FORGOT Step 2 -->
+<div class="card hide" id="panelForgot2">
+    <h3 style="margin:0 0 8px 0;">Redefinir senha</h3>
+
+    <div class="small">Enviamos um código para <b id="forgotEmailEcho">—</b>.</div>
+
+    <label>Código (6 dígitos)</label>
+    <input id="forgotCode" inputmode="numeric" maxlength="6" placeholder="ex: 963305"/>
+
+    <label>Nova senha</label>
+    <input id="forgotPw1" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
+
+    <label>Repita a nova senha</label>
+    <input id="forgotPw2" type="password" placeholder="repita a senha" autocomplete="new-password"/>
+
+    <div class="two">
+        <button id="forgotResetBtn">Salvar e entrar</button>
+        <button id="forgotResendBtn" type="button">Reenviar código</button>
+    </div>
+
+    <div id="forgotCodeInfo" class="small"></div>
+</div>
+
+<pre id="log"></pre>
 
 <script>
-    // ===== Config/Helpers =====
-    const LS = {
-        token: "ss_token",
-        email: "ss_email"
-    };
-
-    const qs = new URLSearchParams(location.search);
-    const ROOM = (qs.get("room") || "").trim().toUpperCase();
-
     const statusEl = document.getElementById("status");
-    const roomText = document.getElementById("roomText");
-    const infoEl = document.getElementById("info");
     const logEl = document.getElementById("log");
+    const roomText = document.getElementById("roomText");
 
-    const emailEl = document.getElementById("email");
-    const codeEl = document.getElementById("code");
-    const requestCodeBtn = document.getElementById("requestCodeBtn");
-    const verifyBtn = document.getElementById("verifyBtn");
-    const goMobileBtn = document.getElementById("goMobileBtn");
+    const LS = { token:"ss_token" };
 
+    const norm = (s)=> (s||"").trim();
     function log(...a){
-        logEl.style.display = "block";
         logEl.textContent += a.map(x => typeof x === "string" ? x : JSON.stringify(x,null,2)).join(" ") + "\n";
         logEl.scrollTop = logEl.scrollHeight;
     }
-    function setStatus(t){ statusEl.textContent = t; }
+    function setStatus(s){ statusEl.textContent = s; }
 
-    function getToken(){ return localStorage.getItem(LS.token) || ""; }
-    function setToken(t){
-        if(t) localStorage.setItem(LS.token, t);
-        else localStorage.removeItem(LS.token);
+    function getRoom(){
+        const qs = new URLSearchParams(location.search);
+        return (qs.get("room") || "").trim().toUpperCase();
     }
+    const ROOM = getRoom();
+    roomText.textContent = ROOM || "—";
 
-    function mobileUrl(){
-        // Mantém a sala na URL do mobile
-        const base = `${location.origin}/mobile.html`;
-        return ROOM ? `${base}?room=${encodeURIComponent(ROOM)}` : base;
+    function gotoMobile(){
+        const url = ROOM ? `/mobile.html?room=${encodeURIComponent(ROOM)}` : "/mobile.html";
+        location.href = url;
+    }
+    function setToken(t){
+        if (t) localStorage.setItem(LS.token, t);
+        else localStorage.removeItem(LS.token);
     }
 
     async function api(path, { method="GET", body=null } = {}){
         const headers = {};
         if (body) headers["Content-Type"] = "application/json";
 
-        const res = await fetch(location.origin + path, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : null
-        });
-
+        const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
         const text = await res.text();
         let json = null;
         try { json = text ? JSON.parse(text) : null; } catch {}
@@ -111,85 +177,221 @@
         return json;
     }
 
-    function updateUi(){
-        roomText.textContent = ROOM || "(sem room)";
-        const logged = !!getToken();
-        goMobileBtn.disabled = !logged;
+    // ===== Tabs + Panels =====
+    const tabLogin = document.getElementById("tabLogin");
+    const tabCreate = document.getElementById("tabCreate");
+    const tabForgot = document.getElementById("tabForgot");
 
-        if (!ROOM) {
-            infoEl.innerHTML = "<span class='warn'>Sem room na URL. Use: register.html?room=ABC123</span>";
-        } else if (logged) {
-            infoEl.innerHTML = "<span class='ok'>Você já está logado ✅</span>";
-        } else {
-            infoEl.innerHTML = "<span class='warn'>Faça login para liberar o áudio.</span>";
-        }
+    const panelLogin = document.getElementById("panelLogin");
+    const panelCreate1 = document.getElementById("panelCreate1");
+    const panelCreate2 = document.getElementById("panelCreate2");
+    const panelForgot1 = document.getElementById("panelForgot1");
+    const panelForgot2 = document.getElementById("panelForgot2");
+
+    function setActiveTab(which){
+        for (const b of [tabLogin, tabCreate, tabForgot]) b.classList.remove("active");
+        tabLogin.classList.toggle("active", which === "login");
+        tabCreate.classList.toggle("active", which === "create");
+        tabForgot.classList.toggle("active", which === "forgot");
+
+        panelLogin.classList.toggle("hide", which !== "login");
+        panelCreate1.classList.toggle("hide", which !== "create");
+        panelCreate2.classList.add("hide"); // começa no step1
+        panelForgot1.classList.toggle("hide", which !== "forgot");
+        panelForgot2.classList.add("hide"); // começa no step1
     }
 
-    // ===== Actions =====
-    requestCodeBtn.onclick = async () => {
-        const email = (emailEl.value || "").trim().toLowerCase();
-        if(!email) return alert("Preencha o email");
+    tabLogin.onclick = ()=> setActiveTab("login");
+    tabCreate.onclick = ()=> setActiveTab("create");
+    tabForgot.onclick = ()=> setActiveTab("forgot");
 
-        localStorage.setItem(LS.email, email);
-        setStatus("enviando...");
-        infoEl.textContent = "Enviando código...";
+    // ===== LOGIN (B1) =====
+    const loginInfo = document.getElementById("loginInfo");
+    document.getElementById("loginBtn").onclick = async () => {
+        const email = norm(document.getElementById("loginEmail").value).toLowerCase();
+        const password = document.getElementById("loginPassword").value || "";
+        if (!email) return alert("Preencha o email");
+        if (!password) return alert("Preencha a senha");
 
-        try{
-            await api("/api/auth/request-code", { method:"POST", body:{ email } });
-            infoEl.innerHTML = "<span class='ok'>Código enviado. Verifique seu email.</span>";
-            setStatus("código enviado");
-        }catch(e){
-            infoEl.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
-            setStatus("erro");
-            log("request-code ERROR:", e.message || e);
-        }
-    };
+        loginInfo.textContent = "Entrando...";
+        setStatus("entrando...");
 
-    verifyBtn.onclick = async () => {
-        const email = ((emailEl.value || localStorage.getItem(LS.email) || "")).trim().toLowerCase();
-        const code = (codeEl.value || "").trim();
-
-        if(!ROOM) return alert("Sem room na URL (register.html?room=ABC123).");
-        if(!email) return alert("Preencha o email");
-        if(!code) return alert("Preencha o código");
-
-        setStatus("verificando...");
-        infoEl.textContent = "Verificando...";
-
-        try{
-            const r = await api("/api/auth/verify-code", { method:"POST", body:{ email, code } });
-            if(!r?.token) throw new Error("Resposta sem token");
-
+        try {
+            const r = await api("/api/auth/login", { method:"POST", body:{ email, password } });
+            if (!r?.token) throw new Error("Resposta sem token");
             setToken(r.token);
-            infoEl.innerHTML = "<span class='ok'>Logado ✅ Redirecionando…</span>";
-            setStatus("logado");
+            loginInfo.innerHTML = "<span class='ok'>OK ✅</span>";
+            gotoMobile();
+        } catch(e){
+            loginInfo.innerHTML = "<span class='err'>Falhou: email ou senha inválidos.</span>";
+            log("login ERROR:", e.message || e);
+        } finally {
+            setStatus("pronto");
+        }
+    };
 
-            // Vai para o mobile com a sala já preenchida
-            location.href = mobileUrl();
+    // ===== CREATE (A) =====
+    const createInfo = document.getElementById("createInfo");
+    const createCodeInfo = document.getElementById("createCodeInfo");
+    const createEmailEcho = document.getElementById("createEmailEcho");
+
+    function showCreateStep2(email){
+        panelCreate1.classList.add("hide");
+        panelCreate2.classList.remove("hide");
+        createEmailEcho.textContent = email;
+    }
+
+    document.getElementById("createStartBtn").onclick = async () => {
+        const email = norm(document.getElementById("createEmail").value).toLowerCase();
+        const pw1 = document.getElementById("createPw1").value || "";
+        const pw2 = document.getElementById("createPw2").value || "";
+
+        if (!email) return alert("Preencha o email");
+        if (pw1.length < 6) return alert("Senha mínima: 6 caracteres");
+        if (pw1 !== pw2) return alert("As senhas não coincidem");
+
+        createInfo.textContent = "Enviando código...";
+        setStatus("enviando...");
+
+        try {
+            const r = await api("/api/auth/register-start", { method:"POST", body:{ email, password: pw1 }});
+            log("register-start:", r);
+            createInfo.innerHTML = "<span class='ok'>Código enviado ✅</span>";
+            showCreateStep2(email);
+        } catch(e){
+            // se usuário já existe, orienta a ir no login
+            const msg = (e.message || "");
+            if (msg.toLowerCase().includes("already")) {
+                createInfo.innerHTML = "<span class='warn'>Este email já tem conta. Use a aba Entrar.</span>";
+            } else {
+                createInfo.innerHTML = "<span class='err'>Falhou: " + msg + "</span>";
+            }
+            log("register-start ERROR:", msg);
+        } finally {
+            setStatus("pronto");
+        }
+    };
+
+    document.getElementById("createResendBtn").onclick = async () => {
+        const email = norm(document.getElementById("createEmail").value).toLowerCase();
+        if (!email) return alert("Preencha o email");
+
+        createCodeInfo.textContent = "Reenviando...";
+        setStatus("enviando...");
+
+        try {
+            await api("/api/auth/request-code", { method:"POST", body:{ email }});
+            createCodeInfo.innerHTML = "<span class='ok'>Reenviado ✅</span>";
+        } catch(e){
+            createCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("resend ERROR:", e.message || e);
+        } finally {
+            setStatus("pronto");
+        }
+    };
+
+    document.getElementById("createCompleteBtn").onclick = async () => {
+        const email = norm(document.getElementById("createEmail").value).toLowerCase();
+        const code = norm(document.getElementById("createCode").value);
+        if (!email) return alert("Preencha o email");
+        if (!code) return alert("Preencha o código");
+
+        createCodeInfo.textContent = "Confirmando...";
+        setStatus("confirmando...");
+
+        try {
+            const r = await api("/api/auth/register-complete", { method:"POST", body:{ email, code }});
+            if (!r?.token) throw new Error("Resposta sem token");
+            setToken(r.token);
+            createCodeInfo.innerHTML = "<span class='ok'>Conta criada ✅</span>";
+            gotoMobile();
+        } catch(e){
+            createCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("register-complete ERROR:", e.message || e);
+        } finally {
+            setStatus("pronto");
+        }
+    };
+
+    // ===== FORGOT =====
+    const forgotInfo = document.getElementById("forgotInfo");
+    const forgotCodeInfo = document.getElementById("forgotCodeInfo");
+    const forgotEmailEcho = document.getElementById("forgotEmailEcho");
+
+    function showForgotStep2(email){
+        panelForgot1.classList.add("hide");
+        panelForgot2.classList.remove("hide");
+        forgotEmailEcho.textContent = email;
+    }
+
+    document.getElementById("forgotSendBtn").onclick = async () => {
+        const email = norm(document.getElementById("forgotEmail").value).toLowerCase();
+        if (!email) return alert("Preencha o email");
+
+        forgotInfo.textContent = "Enviando código...";
+        setStatus("enviando...");
+
+        try{
+            const r = await api("/api/auth/forgot-password", { method:"POST", body:{ email }});
+            log("forgot-password:", r);
+            forgotInfo.innerHTML = "<span class='ok'>Código enviado ✅</span>";
+            showForgotStep2(email);
         }catch(e){
-            infoEl.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
-            setStatus("erro");
-            log("verify-code ERROR:", e.message || e);
+            forgotInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("forgot-password ERROR:", e.message || e);
+        }finally{
+            setStatus("pronto");
         }
     };
 
-    goMobileBtn.onclick = () => {
-        if(!ROOM) return alert("Sem room na URL.");
-        location.href = mobileUrl();
+    document.getElementById("forgotResendBtn").onclick = async () => {
+        const email = norm(document.getElementById("forgotEmail").value).toLowerCase();
+        if (!email) return alert("Preencha o email");
+
+        forgotCodeInfo.textContent = "Reenviando...";
+        setStatus("enviando...");
+
+        try {
+            await api("/api/auth/request-code", { method:"POST", body:{ email }});
+            forgotCodeInfo.innerHTML = "<span class='ok'>Reenviado ✅</span>";
+        } catch(e){
+            forgotCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("forgot resend ERROR:", e.message || e);
+        } finally {
+            setStatus("pronto");
+        }
     };
 
-    // ===== Init =====
-    (function init(){
-        emailEl.value = localStorage.getItem(LS.email) || "";
+    document.getElementById("forgotResetBtn").onclick = async () => {
+        const email = norm(document.getElementById("forgotEmail").value).toLowerCase();
+        const code = norm(document.getElementById("forgotCode").value);
+        const pw1 = document.getElementById("forgotPw1").value || "";
+        const pw2 = document.getElementById("forgotPw2").value || "";
 
-        // Se já estiver logado e tiver room, manda direto pro mobile (UX top)
-        if(getToken() && ROOM){
-            infoEl.innerHTML = "<span class='ok'>Logado ✅ Indo para o áudio…</span>";
-            setTimeout(() => location.href = mobileUrl(), 350);
+        if (!email) return alert("Preencha o email");
+        if (!code) return alert("Preencha o código");
+        if (pw1.length < 6) return alert("Senha mínima: 6 caracteres");
+        if (pw1 !== pw2) return alert("As senhas não coincidem");
+
+        forgotCodeInfo.textContent = "Salvando...";
+        setStatus("salvando...");
+
+        try{
+            const r = await api("/api/auth/reset-password", { method:"POST", body:{ email, code, newPassword: pw1 }});
+            if (!r?.token) throw new Error("Resposta sem token");
+            setToken(r.token);
+            forgotCodeInfo.innerHTML = "<span class='ok'>Senha atualizada ✅</span>";
+            gotoMobile();
+        }catch(e){
+            forgotCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
+            log("reset-password ERROR:", e.message || e);
+        }finally{
+            setStatus("pronto");
         }
+    };
 
-        updateUi();
-    })();
+    // default tab
+    setActiveTab("login");
 </script>
 </body>
 </html>

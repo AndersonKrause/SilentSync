@@ -50,9 +50,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AppUser>()
             .Property(x => x.PasswordHash)
             .HasMaxLength(400);
+        
+        modelBuilder.Entity<AppUser>()
+            .Property(x => x.PendingPasswordHash)
+            .HasMaxLength(400);
 
         modelBuilder.Entity<LoginCode>()
-            .HasIndex(x => new { x.Email, x.Code });
+            .HasIndex(x => new { x.Email, x.Code })
+            .IsUnique();
 
         modelBuilder.Entity<LoginCode>()
             .Property(x => x.Email)

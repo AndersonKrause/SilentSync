@@ -25,28 +25,25 @@
 <body>
 <h2>Mobile <span id="status" class="pill">desconectado</span></h2>
 
-<!-- AUTH -->
-<div class="card" id="authCard">
-    <h3 style="margin:0 0 8px 0;">Login</h3>
-
-    <label>Email</label>
-    <input id="email" placeholder="you@email.com" autocomplete="email"/>
-
-    <div class="two">
-        <button id="requestCodeBtn">Enviar código</button>
-        <button id="logoutBtn" disabled>Sair</button>
+<!-- INFO -->
+<div class="card" id="infoCard">
+    <div class="small">
+        Se você não estiver logado, esta página abre o <b>register</b> automaticamente.
+    </div>
+    <div class="small" style="margin-top:6px">
+        Room: <b id="roomEcho">—</b>
     </div>
 
-    <label>Código</label>
-    <input id="code" placeholder="ex: 963305" inputmode="numeric"/>
+    <div class="two" style="margin-top:10px">
+        <button id="goRegisterBtn" type="button">Ir para Registro</button>
+        <button id="logoutBtn" type="button">Sair</button>
+    </div>
 
-    <button id="verifyBtn">Verificar e logar</button>
-
-    <div id="authInfo" class="small"></div>
+    <div id="infoText" class="small"></div>
 </div>
 
-<!-- JOIN ROOM -->
-<div class="card">
+<!-- JOIN ROOM (vai sumir quando vier via QR: ?room=XXXXXX) -->
+<div class="card" id="joinCard">
     <h3 style="margin:0 0 8px 0;">Entrar na sala</h3>
 
     <label>Room Code</label>
@@ -103,8 +100,15 @@
     const audio = document.getElementById('audio');
     const playBtn = document.getElementById('playBtn');
 
-    const authInfo = document.getElementById('authInfo');
     const joinInfo = document.getElementById('joinInfo');
+
+    const infoText = document.getElementById('infoText');
+    const goRegisterBtn = document.getElementById('goRegisterBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const roomEcho = document.getElementById('roomEcho');
+
+    const joinCard = document.getElementById("joinCard");
+    const joinBtn = document.getElementById("joinBtn");
 
     const norm = (s) => (s || "").trim().toUpperCase();
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -117,11 +121,9 @@
     function nowMs(){ return Date.now(); }
 
     function getBaseUrl(){
-        // sempre usa o mesmo host que você abriu no celular (IP do PC)
         return window.location.origin;
     }
 
-    // Troca "localhost" por host real (IP do PC) quando necessário
     function normalizeMediaUrl(input){
         if (!input) return "";
         try {
@@ -136,10 +138,14 @@
         }
     }
 
+    function getRoomFromQuery(){
+        const qsRoom = new URLSearchParams(location.search).get("room");
+        return norm(qsRoom || "");
+    }
+
     // ========= Local Storage =========
     const LS = {
         token: "ss_token",
-        email: "ss_email",
         deviceId: "ss_deviceId",
         displayName: "ss_displayName",
         roomCode: "ss_roomCode",
@@ -155,26 +161,20 @@
         return id;
     }
 
-    function setToken(t){
-        if (t) localStorage.setItem(LS.token, t);
-        else localStorage.removeItem(LS.token);
-        updateUiAuth();
-    }
     function getToken(){
         return localStorage.getItem(LS.token) || "";
     }
-
-    function updateUiAuth(){
-        const logged = !!getToken();
-        document.getElementById('logoutBtn').disabled = !logged;
-        document.getElementById('joinBtn').disabled = !logged;
-
-        authInfo.innerHTML = logged
-            ? "<span class='ok'>Logado ✅</span>"
-            : "<span class='warn'>Não logado</span>";
+    function setToken(t){
+        if (t) localStorage.setItem(LS.token, t);
+        else localStorage.removeItem(LS.token);
     }
 
-    // ========= API =========
+    function goRegister(){
+        const room = norm(document.getElementById('roomCode').value) || getRoomFromQuery();
+        const url = room ? `/register.html?room=${encodeURIComponent(room)}` : `/register.html`;
+        location.href = url;
+    }
+
     async function api(path, { method="GET", body=null, auth=false } = {}){
         const headers = {};
         if (body) headers["Content-Type"] = "application/json";
@@ -197,49 +197,14 @@
         return json;
     }
 
-    // ========= AUTH FLOW =========
-    document.getElementById('requestCodeBtn').onclick = async () => {
-        const email = document.getElementById('email').value.trim();
-        if (!email) return alert("Preencha o email");
+    function updateUiAuth(){
+        const logged = !!getToken();
+        joinBtn.disabled = !logged;
 
-        localStorage.setItem(LS.email, email);
-        authInfo.textContent = "Enviando código...";
-
-        try {
-            await api("/api/auth/request-code", { method:"POST", body:{ email } });
-            authInfo.innerHTML = "<span class='ok'>Código enviado. Verifique seu email.</span>";
-            log("request-code OK:", email);
-        } catch(e){
-            authInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
-            log("request-code ERROR:", e.message || e);
-        }
-    };
-
-    document.getElementById('verifyBtn').onclick = async () => {
-        const email = (document.getElementById('email').value || localStorage.getItem(LS.email) || "").trim();
-        const code = document.getElementById('code').value.trim();
-        if (!email) return alert("Preencha o email");
-        if (!code) return alert("Preencha o código");
-
-        authInfo.textContent = "Verificando...";
-
-        try {
-            const r = await api("/api/auth/verify-code", { method:"POST", body:{ email, code } });
-            if (!r?.token) throw new Error("Resposta sem token");
-            setToken(r.token);
-            authInfo.innerHTML = "<span class='ok'>Logado ✅</span>";
-            log("verify-code OK (token recebido)");
-        } catch(e){
-            authInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
-            log("verify-code ERROR:", e.message || e);
-        }
-    };
-
-    document.getElementById('logoutBtn').onclick = () => {
-        setToken("");
-        joinInfo.textContent = "";
-        setStatus("desconectado");
-    };
+        infoText.innerHTML = logged
+            ? "<span class='ok'>Logado ✅</span>"
+            : "<span class='warn'>Não logado. Redirecionando para o Registro...</span>";
+    }
 
     // ========= JOIN ROOM =========
     let roomCodeCurrent = "";
@@ -247,7 +212,7 @@
     let conn = null;
     let heartbeatTimer = null;
 
-    document.getElementById('joinBtn').onclick = async () => {
+    joinBtn.onclick = async () => {
         const roomCode = norm(document.getElementById('roomCode').value);
         const displayName = document.getElementById('displayName').value.trim();
         const deviceId = getOrCreateDeviceId();
@@ -261,7 +226,6 @@
         joinInfo.textContent = "Entrando na sala...";
 
         try {
-            // Seu backend tem join-auth (Authorize). É o que você quer após registro.
             const r = await api(`/api/rooms/${roomCode}/join-auth`, {
                 method: "POST",
                 auth: true,
@@ -272,15 +236,72 @@
             roomCodeCurrent = r.roomCode || roomCode;
             localStorage.setItem(LS.memberIdByRoom(roomCodeCurrent), memberIdCurrent);
 
-            joinInfo.innerHTML = "<span class='ok'>Entrou ✅</span> memberId=" + memberIdCurrent;
+            joinInfo.innerHTML = "<span class='ok'>Entrou ✅</span>";
             log("join-auth OK:", r);
 
             await connectSignalR(roomCodeCurrent, memberIdCurrent);
         } catch(e){
             joinInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
             log("join-auth ERROR:", e.message || e);
+
+            if ((e.message || "").toLowerCase().includes("unauthorized") || (e.message || "").includes("401")) {
+                goRegister();
+            }
         }
     };
+
+    // ========= AUTO JOIN VIA QR =========
+    async function autoJoinFromQrIfPossible() {
+        const room = getRoomFromQuery();
+        if (!room) return false; // não veio via QR
+
+        // esconde card de join
+        if (joinCard) joinCard.style.display = "none";
+
+        // precisa estar logado
+        if (!getToken()) return false;
+
+        // displayName: usa storage; se não tiver, cria um default (você pode trocar por um popup depois)
+        let displayName = (localStorage.getItem(LS.displayName) || "").trim();
+        if (!displayName) {
+            displayName = "Guest";
+            localStorage.setItem(LS.displayName, displayName);
+        }
+
+        // garante room no input (mesmo escondido)
+        document.getElementById('roomCode').value = room;
+
+        joinInfo.innerHTML = "<span class='warn'>Entrando automaticamente na sala...</span>";
+
+        try {
+            const deviceId = getOrCreateDeviceId();
+
+            const r = await api(`/api/rooms/${room}/join-auth`, {
+                method: "POST",
+                auth: true,
+                body: { displayName, deviceId }
+            });
+
+            memberIdCurrent = r.memberId;
+            roomCodeCurrent = r.roomCode || room;
+            localStorage.setItem(LS.memberIdByRoom(roomCodeCurrent), memberIdCurrent);
+
+            joinInfo.innerHTML = "<span class='ok'>Conectado ✅</span>";
+            log("auto join-auth OK:", r);
+
+            await connectSignalR(roomCodeCurrent, memberIdCurrent);
+            return true;
+        } catch (e) {
+            joinInfo.innerHTML = "<span class='err'>Auto-join falhou: " + (e?.message || e) + "</span>";
+            log("autoJoinFromQr ERROR:", e?.message || e);
+
+            // token inválido / expirado -> volta pro register
+            if ((e?.message || "").toLowerCase().includes("unauthorized") || (e?.message || "").includes("401")) {
+                goRegister();
+            }
+            return false;
+        }
+    }
 
     // ========= SignalR + Time Sync =========
     let serverOffsetMs = 0;
@@ -326,13 +347,11 @@
 
         const isM3u8 = url.toLowerCase().includes(".m3u8");
 
-        // iOS/Safari: HLS nativo
         if (isM3u8 && audio.canPlayType("application/vnd.apple.mpegurl")) {
             audio.src = url;
             return;
         }
 
-        // Android/Chrome: HLS via hls.js
         if (isM3u8 && window.Hls && Hls.isSupported()) {
             hls = new Hls({ lowLatencyMode: true });
             hls.loadSource(url);
@@ -344,14 +363,13 @@
             return;
         }
 
-        // fallback MP3/other
         audio.src = url;
     }
 
     async function applyState(state, reason) {
         lastState = state;
 
-        if (!state.audioUrl) {
+        if (!state || !state.audioUrl) {
             log("aguardando audioUrl no PlayerState...", state);
             return;
         }
@@ -390,7 +408,6 @@
         }
     }
 
-    // drift fix (apenas tocando)
     setInterval(() => {
         if (!lastState) return;
         if (!lastState.isPlaying) return;
@@ -416,7 +433,6 @@
     };
 
     async function connectSignalR(roomCode, memberId){
-        // derruba conexão anterior
         if (conn) {
             try { await conn.stop(); } catch {}
             conn = null;
@@ -438,14 +454,10 @@
         conn.onclose(() => setStatus("desconectado"));
         conn.onreconnecting(() => setStatus("reconectando..."));
 
-        // ✅ UM ÚNICO onreconnected
         conn.onreconnected(async () => {
             setStatus("conectado");
             try {
-                // ✅ reentra no grupo após reconexão
                 await conn.invoke("JoinRoom", roomCode, memberId);
-
-                // ✅ puxa o estado atual e reaplica (volta o áudio)
                 const state = await conn.invoke("GetPlayerState", roomCode);
                 await applyState(state, "reconnected-pull");
             } catch (e) {
@@ -462,48 +474,61 @@
         setStatus("conectado");
         log("connected:", hubUrl);
 
-        // clock sync
         const best = await timeSync(10);
         serverOffsetMs = best.offset;
         offsetEl.textContent = best.offset.toFixed(1);
         rttEl.textContent = best.rtt.toFixed(1);
         log("timeSync best:", best);
 
-        // join group
+        
         await conn.invoke("JoinRoom", roomCode, memberId);
         log("joined room:", roomCode);
 
-        // ✅ heartbeat para activeCount
+        
         heartbeatTimer = setInterval(async () => {
             try { await conn.invoke("Heartbeat", roomCode, memberId); } catch {}
         }, 30000);
 
-        // pull current state
+        
         const state = await conn.invoke("GetPlayerState", roomCode);
         log("GetPlayerState:", state);
         await applyState(state, "pull");
     }
 
-    // ========= Init (restore form + room from querystring) =========
+    // ========= Init =========
     (function init(){
-        const qsRoom = new URLSearchParams(location.search).get("room");
+        const qsRoom = getRoomFromQuery();
+
         if (qsRoom) {
-            document.getElementById('roomCode').value = norm(qsRoom);
-            localStorage.setItem(LS.roomCode, norm(qsRoom));
+            document.getElementById('roomCode').value = qsRoom;
+            localStorage.setItem(LS.roomCode, qsRoom);
         } else {
             document.getElementById('roomCode').value = localStorage.getItem(LS.roomCode) || "";
         }
 
-        document.getElementById('email').value = localStorage.getItem(LS.email) || "";
+        roomEcho.textContent = norm(document.getElementById('roomCode').value) || "—";
         document.getElementById('displayName').value = localStorage.getItem(LS.displayName) || "";
 
         getOrCreateDeviceId();
         updateUiAuth();
 
-        // Se já estiver logado, dica mais clara
-        if (getToken()) {
-            authInfo.innerHTML = "<span class='ok'>Logado ✅</span>";
+        goRegisterBtn.onclick = () => goRegister();
+        logoutBtn.onclick = () => {
+            setToken("");
+            joinInfo.textContent = "";
+            setStatus("desconectado");
+            updateUiAuth();
+            goRegister();
+        };
+
+        // Se não estiver logado, manda pro register automaticamente
+        if (!getToken()) {
+            setTimeout(goRegister, 200);
+            return;
         }
+
+        // ✅ se veio via QR (?room=), entra automaticamente e esconde o Join Card
+        autoJoinFromQrIfPossible();
     })();
 </script>
 </body>
