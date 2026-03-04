@@ -25,7 +25,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Room>()
             .Property(r => r.Code)
-            .HasMaxLength(10);
+            .HasMaxLength(10)
+            .IsRequired();
         
         modelBuilder.Entity<RoomMember>(entity =>
         {
@@ -45,6 +46,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AppUser>()
             .Property(x => x.Email)
             .HasMaxLength(200);
+        
+        modelBuilder.Entity<AppUser>()
+            .Property(x => x.PasswordHash)
+            .HasMaxLength(400);
 
         modelBuilder.Entity<LoginCode>()
             .HasIndex(x => new { x.Email, x.Code });
