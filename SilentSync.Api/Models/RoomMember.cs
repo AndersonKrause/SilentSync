@@ -4,8 +4,9 @@ public class RoomMember
 {
     public Guid Id { get; set; } =  Guid.NewGuid();
     public Guid RoomId { get; set; }
-    public Guid UserId { get; set; }
     public Room Room { get; set; } = default!;
+    public Guid UserId { get; set; }
+    public AppUser User { get; set; } = default!;
     public string DisplayName { get; set; } = "";
     public string DeviceId { get; set; } = "";
     public DateTime JoinedAtUtc { get; set; } = DateTime.UtcNow;

@@ -19,52 +19,65 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Room>()
-            .HasIndex(r => r.Code)
-            .IsUnique();
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.HasIndex(r => r.Code).IsUnique();
 
-        modelBuilder.Entity<Room>()
-            .Property(r => r.Code)
-            .HasMaxLength(10)
-            .IsRequired();
-        
+            entity.Property(r => r.Code)
+                .HasMaxLength(10)
+                .IsRequired();
+        });
+
         modelBuilder.Entity<RoomMember>(entity =>
         {
-            entity.Property(x => x.DisplayName).HasMaxLength(80);
-            entity.Property(x => x.DeviceId).HasMaxLength(200);
+            entity.Property(x => x.DisplayName)
+                .HasMaxLength(80)
+                .IsRequired();
 
-            // The same device cannot connect twice in the same room.
+            entity.Property(x => x.DeviceId)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.HasOne(x => x.Room)
+                .WithMany(r => r.Members)
+                .HasForeignKey(x => x.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.User)
+                .WithMany(u => u.RoomMembers)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasIndex(x => new { x.RoomId, x.DeviceId }).IsUnique();
-            
-            entity.HasIndex(x => new { x.RoomId, x.UserId }).IsUnique();
+            entity.HasIndex(x => new { x.RoomId, x.UserId });
         });
-        
-        modelBuilder.Entity<AppUser>()
-            .HasIndex(x => x.Email)
-            .IsUnique();
 
-        modelBuilder.Entity<AppUser>()
-            .Property(x => x.Email)
-            .HasMaxLength(200);
-        
-        modelBuilder.Entity<AppUser>()
-            .Property(x => x.PasswordHash)
-            .HasMaxLength(400);
-        
-        modelBuilder.Entity<AppUser>()
-            .Property(x => x.PendingPasswordHash)
-            .HasMaxLength(400);
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasIndex(x => x.Email).IsUnique();
 
-        modelBuilder.Entity<LoginCode>()
-            .HasIndex(x => new { x.Email, x.Code })
-            .IsUnique();
+            entity.Property(x => x.Email)
+                .HasMaxLength(200)
+                .IsRequired();
 
-        modelBuilder.Entity<LoginCode>()
-            .Property(x => x.Email)
-            .HasMaxLength(200);
+            entity.Property(x => x.PasswordHash)
+                .HasMaxLength(400);
 
-        modelBuilder.Entity<LoginCode>()
-            .Property(x => x.Code)
-            .HasMaxLength(10);
+            entity.Property(x => x.PendingPasswordHash)
+                .HasMaxLength(400);
+        });
+
+        modelBuilder.Entity<LoginCode>(entity =>
+        {
+            entity.HasIndex(x => new { x.Email, x.Code }).IsUnique();
+
+            entity.Property(x => x.Email)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(x => x.Code)
+                .HasMaxLength(10)
+                .IsRequired();
+        });
     }
 }
