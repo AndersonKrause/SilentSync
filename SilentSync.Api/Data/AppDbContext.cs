@@ -36,7 +36,7 @@ public class AppDbContext : DbContext
             // The same device cannot connect twice in the same room.
             entity.HasIndex(x => new { x.RoomId, x.DeviceId }).IsUnique();
             
-            entity.HasIndex(x => new { x.RoomId, x.UserId });
+            entity.HasIndex(x => new { x.RoomId, x.UserId }).IsUnique();
         });
         
         modelBuilder.Entity<AppUser>()
