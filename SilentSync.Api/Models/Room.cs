@@ -6,5 +6,8 @@ public class Room
     public string Code { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     
+    public Guid? OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
+    
     public ICollection<RoomMember> Members { get; set; } = new List<RoomMember>();
 }

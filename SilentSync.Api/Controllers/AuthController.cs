@@ -8,6 +8,7 @@ using SilentSync.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SilentSync.Api.Controllers;
 
@@ -285,11 +286,20 @@ public class AuthController : ControllerBase
             return StatusCode(429, ex.Message);
         }
     }
-
-    [HttpDelete("{id:guid}/delete/user")]
-    public async Task<IActionResult> DeleteUser(Guid id)
+    
+    [Authorize]
+    [HttpDelete("delete/user")]
+    public async Task<IActionResult> DeleteUser()
     {
-        var deletedUser = await _db.Users.SingleOrDefaultAsync(u => u.Id == id);
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized("Invalid token.");
+        }
+        
+        var deletedUser = await _db.Users.SingleOrDefaultAsync(u => u.Id == userId);
         if (deletedUser is null)
         {
             return NotFound("User not found.");

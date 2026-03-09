@@ -26,6 +26,11 @@ public class AppDbContext : DbContext
             entity.Property(r => r.Code)
                 .HasMaxLength(10)
                 .IsRequired();
+            
+            entity.HasOne(r => r.Owner)
+                .WithMany()
+                .HasForeignKey(r => r.OwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<RoomMember>(entity =>

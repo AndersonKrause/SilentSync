@@ -27,14 +27,25 @@ public class RoomsController : ControllerBase
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
     }
-
+    
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create()
     {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized("Invalid token.");
+        
         for (var attempt = 0; attempt < 5; attempt++)
         {
             var code = GenerateRoomCode(6);
-            var room = new Room { Code = code };
+            var room = new Room
+            {
+                Code = code,
+                OwnerId = userId
+            };
 
             _db.Rooms.Add(room);
 
@@ -205,14 +216,26 @@ public class RoomsController : ControllerBase
         if (room is null) return NotFound();
         return Ok(new { room.Id, room.Code });
     }
-
-    [HttpDelete("{id:guid}/delete/room")]
+    
+    [Authorize]
+    [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteRoom(Guid id)
     {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized("Invalid token.");
+        
         var deletedRoom = await _db.Rooms.SingleOrDefaultAsync(r => r.Id == id);
         if (deletedRoom is null)
         {
             return NotFound("Room not found.");
+        }
+
+        if (deletedRoom.OwnerId != userId)
+        {
+            return Forbid();
         }
 
         _db.Rooms.Remove(deletedRoom);
