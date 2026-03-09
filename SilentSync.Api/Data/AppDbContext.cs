@@ -51,7 +51,7 @@ public class AppDbContext : DbContext
             entity.HasOne(x => x.User)
                 .WithMany(u => u.RoomMembers)
                 .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(x => new { x.RoomId, x.DeviceId }).IsUnique();
             entity.HasIndex(x => new { x.RoomId, x.UserId });
