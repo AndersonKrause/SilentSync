@@ -7,7 +7,11 @@
     <link href="style.css" rel="stylesheet">
 </head>
 <body>
-<h2>Admin <span id="status" class="pill">desconectado</span></h2>
+<h2 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    Admin
+    <span id="status" class="pill">desconectado</span>
+    <button id="logoutBtn" class="btnSmall" type="button">Logout</button>
+</h2>
 
 <!-- Room + Links -->
 <div class="card" style="margin-bottom:14px">
@@ -103,6 +107,29 @@
     const PUBLIC_ORIGIN = "http://192.168.178.21:5031";
     const PUBLIC_HOST = "192.168.178.21:5031";
 
+    // ===== Auth/session =====
+    const LS = { token: "ss_token" };
+
+    function getToken() {
+        return localStorage.getItem(LS.token) || "";
+    }
+
+    function redirectToAdminLogin() {
+        location.href = "/register.html?next=admin";
+    }
+
+    function logout() {
+        localStorage.removeItem(LS.token);
+        redirectToAdminLogin();
+    }
+
+    (function checkAuth() {
+        const token = getToken();
+        if (!token) {
+            redirectToAdminLogin();
+        }
+    })();
+
     // ===== UI refs =====
     const logEl = document.getElementById('log');
     const statusEl = document.getElementById('status');
@@ -118,6 +145,7 @@
     const screenLinkText = document.getElementById('screenLinkText');
     const regLinkText = document.getElementById('regLinkText');
     const qrReg = document.getElementById('qrReg');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const norm = (s) => (s || "").trim().toUpperCase();
@@ -127,7 +155,12 @@
         logEl.textContent += line + "\n";
         logEl.scrollTop = logEl.scrollHeight;
     }
-    function setStatus(s){ statusEl.textContent = s; }
+
+    function setStatus(s){
+        statusEl.textContent = s;
+    }
+
+    logoutBtn.onclick = logout;
 
     // ===== links/qr =====
     function buildLinks(roomCode){
@@ -147,6 +180,7 @@
             copyRegBtn.disabled = true;
             return;
         }
+
         const { screenUrl, regUrl } = buildLinks(rc);
         screenLinkText.textContent = screenUrl;
         regLinkText.textContent = regUrl;
@@ -168,9 +202,28 @@
     createRoomBtn.onclick = async () => {
         createRoomBtn.disabled = true;
         createRoomBtn.textContent = "Criando...";
+
         try{
-            // API pode estar em localhost ou IP; usamos caminho relativo (mesma origem do admin)
-            const res = await fetch("/api/rooms", { method: "POST" });
+            const token = getToken();
+            if (!token) {
+                alert("Faça login antes de criar uma room.");
+                redirectToAdminLogin();
+                return;
+            }
+
+            const res = await fetch("/api/rooms", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if (res.status === 401) {
+                alert("Sua sessão expirou. Faça login novamente.");
+                redirectToAdminLogin();
+                return;
+            }
+
             const json = await res.json().catch(()=>null);
             if(!res.ok) throw new Error((json && (json.message || json.title)) || ("HTTP " + res.status));
 
@@ -226,7 +279,10 @@
     // ===== Upload (espera { audioPath, videoPath }) =====
     uploadBtn.onclick = async () => {
         const f = document.getElementById('file').files?.[0];
-        if (!f) { alert("Selecione um vídeo primeiro."); return; }
+        if (!f) {
+            alert("Selecione um vídeo primeiro.");
+            return;
+        }
 
         uploadProg.style.display = "block";
         uploadProg.value = 0;
@@ -291,6 +347,7 @@
 
     async function sendState(reason) {
         if (!conn) return;
+
         const payload = buildPayload();
         if (!payload.roomCode) return;
 
@@ -316,8 +373,10 @@
             await sendState(reason);
             return;
         }
+
         pending = true;
         await sleep(550);
+
         if (pending) {
             pending = false;
             lastSent = Date.now();
@@ -331,9 +390,18 @@
         const audioUrl = (document.getElementById('audioUrl').value || "").trim();
         const videoUrl = (document.getElementById('videoUrl').value || "").trim();
 
-        if (!roomCode) { alert("Preencha Room Code."); return; }
-        if (!masterKey) { alert("Preencha MasterKey."); return; }
-        if (!audioUrl || !videoUrl) { alert("Faça o upload primeiro (precisamos de Audio e Video URL)."); return; }
+        if (!roomCode) {
+            alert("Preencha Room Code.");
+            return;
+        }
+        if (!masterKey) {
+            alert("Preencha MasterKey.");
+            return;
+        }
+        if (!audioUrl || !videoUrl) {
+            alert("Faça o upload primeiro (precisamos de Audio e Video URL).");
+            return;
+        }
 
         // ✅ Use o IP também no Hub (evita mistura de origens)
         const hubUrl = PUBLIC_ORIGIN + "/hubs/rooms";
@@ -370,7 +438,10 @@
 
     document.getElementById('seekBtn').onclick = async () => {
         const v = parseInt(document.getElementById('seekMs').value, 10);
-        if (!Number.isFinite(v)) { alert("Seek inválido"); return; }
+        if (!Number.isFinite(v)) {
+            alert("Seek inválido");
+            return;
+        }
         video.currentTime = v / 1000;
         await scheduleSend("seekBtn");
     };
