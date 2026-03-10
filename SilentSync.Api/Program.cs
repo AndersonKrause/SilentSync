@@ -9,6 +9,7 @@ using System.Text;
 using SilentSync.Api.Services;
 using SilentSync.Api.Services.Auth;
 using SilentSync.Api.Services.Media;
+using SilentSync.Api.Services.Rooms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,6 +93,7 @@ builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ILoginCodeService, LoginCodeService>();
 builder.Services.AddScoped<IMediaService, MediaService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
 
 builder.Services.AddAuthorization();
 
