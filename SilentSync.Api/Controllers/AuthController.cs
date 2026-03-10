@@ -78,7 +78,12 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
     }
 
-    private static string CreateAccessJwt(Guid userId, string emailAddr, IConfiguration cfg)
+    private static string CreateAccessJwt(
+        Guid userId, 
+        string emailAddr, 
+        string role, 
+        IConfiguration cfg
+        )
     {
         var jwt = cfg.GetSection("Jwt");
         var key = jwt["Key"] ?? throw new Exception("Jwt:Key missing");
@@ -90,6 +95,7 @@ public class AuthController : ControllerBase
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, emailAddr),
+            new(ClaimTypes.Role, role),
             new("typ", "access"),
         };
 
@@ -183,7 +189,7 @@ public class AuthController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        var token = CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
         return Ok(new { token });
     }
 
@@ -205,7 +211,7 @@ public class AuthController : ControllerBase
         if (vr == PasswordVerificationResult.Failed)
             return Unauthorized("Wrong email or password.");
 
-        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        var token = CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
         return Ok(new { token });
     }
 
@@ -265,7 +271,7 @@ public class AuthController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        var token = CreateAccessJwt(user.Id, user.Email, _cfg);
+        var token = CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
         return Ok(new { token });
     }
 
@@ -308,5 +314,33 @@ public class AuthController : ControllerBase
         _db.Users.Remove(deletedUser);
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+    
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized("Invalid token.");
+
+        var user = await _db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.Role,
+                u.EmailVerifiedAtUtc,
+                u.CreatedAtUtc
+            })
+            .SingleOrDefaultAsync();
+
+        if (user is null)
+            return NotFound("User not found.");
+
+        return Ok(user);
     }
 }

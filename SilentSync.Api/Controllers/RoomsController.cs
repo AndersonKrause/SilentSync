@@ -28,7 +28,7 @@ public class RoomsController : ControllerBase
         _db = db ?? throw new ArgumentNullException(nameof(db));
     }
     
-    [Authorize]
+    [Authorize(Roles = "host,admin")]
     [HttpPost]
     public async Task<IActionResult> Create()
     {

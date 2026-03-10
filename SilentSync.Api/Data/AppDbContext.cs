@@ -64,6 +64,11 @@ public class AppDbContext : DbContext
             entity.Property(x => x.Email)
                 .HasMaxLength(200)
                 .IsRequired();
+            
+            entity.Property(x => x.Role)
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasDefaultValue("user");
 
             entity.Property(x => x.PasswordHash)
                 .HasMaxLength(400);
