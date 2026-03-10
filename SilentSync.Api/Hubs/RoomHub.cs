@@ -12,6 +12,7 @@ public class RoomHub : Hub
 {
     private static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(2);
     private static readonly ConcurrentDictionary<string, PlayerState> _stateByRoom = new();
+    private static readonly ConcurrentDictionary<string, ConnectionMembership> _membershipByConnection = new();
 
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
@@ -26,14 +27,25 @@ public class RoomHub : Hub
     public async Task JoinRoom(string roomCode, Guid memberId)
     {
         roomCode = Norm(roomCode);
+        var userId = GetCurrentUserId();
 
         var room = await _db.Rooms.SingleOrDefaultAsync(r => r.Code == roomCode);
         if (room is null)
             throw new HubException("Room not found.");
 
-        var member = await _db.RoomMembers.SingleOrDefaultAsync(m => m.Id == memberId && m.RoomId == room.Id);
+        var member = await _db.RoomMembers.SingleOrDefaultAsync(m =>
+            m.Id == memberId &&
+            m.RoomId == room.Id &&
+            m.UserId == userId);
+
         if (member is null)
-            throw new HubException("Invalid member.");
+            throw new HubException("Invalid member for current user.");
+
+        member.LastSeenAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _membershipByConnection[Context.ConnectionId] =
+            new ConnectionMembership(room.Id, roomCode, member.Id, userId);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, Group(roomCode));
 
@@ -48,22 +60,32 @@ public class RoomHub : Hub
     }
 
     [Authorize]
-    public async Task Heartbeat(string roomCode, Guid memberId)
+    public async Task Heartbeat(string roomCode)
     {
         roomCode = Norm(roomCode);
+        var userId = GetCurrentUserId();
 
-        var room = await _db.Rooms.SingleOrDefaultAsync(r => r.Code == roomCode);
-        if (room is null)
-            throw new HubException("Room not found.");
+        if (!_membershipByConnection.TryGetValue(Context.ConnectionId, out var membership))
+            throw new HubException("Connection is not joined to a room.");
 
-        var member = await _db.RoomMembers.SingleOrDefaultAsync(m => m.Id == memberId && m.RoomId == room.Id);
+        if (membership.RoomCode != roomCode)
+            throw new HubException("Connection is not joined to this room.");
+
+        if (membership.UserId != userId)
+            throw new HubException("Connection user mismatch.");
+
+        var member = await _db.RoomMembers.SingleOrDefaultAsync(m =>
+            m.Id == membership.MemberId &&
+            m.RoomId == membership.RoomId &&
+            m.UserId == userId);
+
         if (member is null)
-            throw new HubException("Invalid member.");
+            throw new HubException("Member not found for this connection.");
 
         member.LastSeenAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        await BroadcastActiveCount(room.Id, roomCode);
+        await BroadcastActiveCount(membership.RoomId, membership.RoomCode);
     }
 
     [HubMethodName("GetPlayerState")]
@@ -206,6 +228,17 @@ public class RoomHub : Hub
 
         return audioUrl;
     }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        if (_membershipByConnection.TryRemove(Context.ConnectionId, out var membership))
+        {
+            await BroadcastActiveCount(membership.RoomId, membership.RoomCode);
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
 
     public record TimeSyncResponse(long t0, long t1, long t2);
+    private record ConnectionMembership(Guid RoomId, string RoomCode, Guid MemberId, Guid UserId);
 }

@@ -486,7 +486,7 @@
 
         
         heartbeatTimer = setInterval(async () => {
-            try { await conn.invoke("Heartbeat", roomCode, memberId); } catch {}
+            try { await conn.invoke("Heartbeat", roomCode); } catch {}
         }, 30000);
 
         
