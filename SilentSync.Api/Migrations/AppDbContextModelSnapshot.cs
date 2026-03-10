@@ -47,6 +47,13 @@ namespace SilentSync.Api.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("user");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
