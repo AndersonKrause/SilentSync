@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SilentSync.Api.Services.Rooms;
 using System.Security.Claims;
+using SilentSync.Api.Contracts.Rooms;
 
 namespace SilentSync.Api.Controllers;
 
@@ -10,11 +11,7 @@ namespace SilentSync.Api.Controllers;
 public class RoomsController : ControllerBase
 {
     private readonly IRoomService _roomService;
-
-    public record JoinRoomRequest(string DisplayName, string DeviceId);
-    public record HeartbeatRequest(Guid MemberId);
-    public record JoinRoomAuthRequest(string DisplayName, string DeviceId);
-
+    
     public RoomsController(IRoomService roomService)
     {
         _roomService = roomService ?? throw new ArgumentNullException(nameof(roomService));
