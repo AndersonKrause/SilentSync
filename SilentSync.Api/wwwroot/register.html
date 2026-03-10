@@ -152,10 +152,23 @@
     const ROOM = getRoom();
     roomText.textContent = ROOM || "—";
 
-    function gotoMobile(){
+    function getNext(){
+        const qs = new URLSearchParams(location.search);
+        return (qs.get("next") || "").trim().toLowerCase();
+    }
+
+    function gotoNext(){
+        const next = getNext();
+
+        if (next === "admin") {
+            location.href = "/admin.html";
+            return;
+        }
+
         const url = ROOM ? `/mobile.html?room=${encodeURIComponent(ROOM)}` : "/mobile.html";
         location.href = url;
     }
+    
     function setToken(t){
         if (t) localStorage.setItem(LS.token, t);
         else localStorage.removeItem(LS.token);
@@ -221,7 +234,7 @@
             if (!r?.token) throw new Error("Resposta sem token");
             setToken(r.token);
             loginInfo.innerHTML = "<span class='ok'>OK ✅</span>";
-            gotoMobile();
+            gotoNext();
         } catch(e){
             loginInfo.innerHTML = "<span class='err'>Falhou: email ou senha inválidos.</span>";
             log("login ERROR:", e.message || e);
@@ -304,7 +317,7 @@
             if (!r?.token) throw new Error("Resposta sem token");
             setToken(r.token);
             createCodeInfo.innerHTML = "<span class='ok'>Conta criada ✅</span>";
-            gotoMobile();
+            gotoNext();
         } catch(e){
             createCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
             log("register-complete ERROR:", e.message || e);
@@ -381,7 +394,7 @@
             if (!r?.token) throw new Error("Resposta sem token");
             setToken(r.token);
             forgotCodeInfo.innerHTML = "<span class='ok'>Senha atualizada ✅</span>";
-            gotoMobile();
+            gotoNext();
         }catch(e){
             forgotCodeInfo.innerHTML = "<span class='err'>Falhou: " + (e.message || e) + "</span>";
             log("reset-password ERROR:", e.message || e);

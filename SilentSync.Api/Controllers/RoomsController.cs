@@ -52,11 +52,11 @@ public class RoomsController : ControllerBase
             try
             {
                 await _db.SaveChangesAsync();
-                return Ok(new { room.Id, room.Code });
+                return Ok(new { room.Id, room.Code, room.OwnerId});
             }
             catch (DbUpdateException)
             {
-                // colisão no índice unique, tenta outro
+                _db.Entry(room).State = EntityState.Detached;
             }
         }
 
