@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SilentSync.Api.Controllers;
 using SilentSync.Api.Data;
 using SilentSync.Api.Models;
 using System.Security.Cryptography;
+using SilentSync.Api.Contracts.Rooms;
 
 namespace SilentSync.Api.Services.Rooms;
 
@@ -46,7 +46,7 @@ public class RoomService : IRoomService
         throw new InvalidOperationException("A unique RoomCode could not be generated. Please try again.");
     }
 
-    public async Task<object> JoinAsync(string code, RoomsController.JoinRoomRequest req)
+    public async Task<object> JoinAsync(string code, JoinRoomRequest req)
     {
         code = Norm(code);
 
@@ -105,7 +105,7 @@ public class RoomService : IRoomService
         };
     }
 
-    public async Task<object> JoinAuthAsync(string code, Guid userId, RoomsController.JoinRoomAuthRequest req)
+    public async Task<object> JoinAuthAsync(string code, Guid userId, JoinRoomAuthRequest req)
     {
         code = Norm(code);
 
@@ -184,7 +184,7 @@ public class RoomService : IRoomService
         };
     }
 
-    public async Task HeartbeatAsync(string code, RoomsController.HeartbeatRequest req)
+    public async Task HeartbeatAsync(string code, HeartbeatRequest req)
     {
         code = Norm(code);
 
