@@ -1,14 +1,15 @@
-﻿using SilentSync.Api.Controllers;
+﻿using SilentSync.Api.Contracts.Auth;
+
 namespace SilentSync.Api.Services.Auth;
 
 public interface IAuthService
 {
-    Task<object> RegisterStartAsync(AuthController.RegisterStartRequest req);
-    Task<string> RegisterCompleteAsync(AuthController.RegisterCompleteRequest req);
-    Task<string> LoginAsync(AuthController.LoginRequest req);
-    Task<object> ForgotPasswordAsync(AuthController.ForgotPasswordRequest req);
-    Task<string> ResetPasswordAsync(AuthController.ResetPasswordRequest req);
-    Task<object> RequestCodeAsync(AuthController.RequestCodeRequest req);
+    Task<object> RegisterStartAsync(RegisterStartRequest req);
+    Task<string> RegisterCompleteAsync(RegisterCompleteRequest req);
+    Task<string> LoginAsync(LoginRequest req);
+    Task<object> ForgotPasswordAsync(ForgotPasswordRequest req);
+    Task<string> ResetPasswordAsync(ResetPasswordRequest req);
+    Task<object> RequestCodeAsync(RequestCodeRequest req);
     Task DeleteUserAsync(Guid userId);
     Task<object> GetMeAsync(Guid userId);
 }
