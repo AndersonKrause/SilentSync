@@ -10,6 +10,7 @@ using SilentSync.Api.Services;
 using SilentSync.Api.Services.Auth;
 using SilentSync.Api.Services.Media;
 using SilentSync.Api.Services.Rooms;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,6 +97,17 @@ builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 
 builder.Services.AddAuthorization();
+
+// Upload limit is 1GB = 1024L
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 1024L * 1024 * 1024; // 1 GB
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024; // 1 GB
+});
 
 var app = builder.Build();
 
