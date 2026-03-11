@@ -8,7 +8,7 @@ public class MediaService : IMediaService
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<MediaService> _logger;
 
-    private const long MaxUploadBytes = 250L * 1024 * 1024;
+    private const long MaxUploadBytes = 1024L * 1024 * 1024;
 
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
