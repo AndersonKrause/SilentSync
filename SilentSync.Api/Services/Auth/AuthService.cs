@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using SilentSync.Api.Controllers;
 using SilentSync.Api.Data;
 using SilentSync.Api.Models;
+using SilentSync.Api.Contracts.Auth;
 
 namespace SilentSync.Api.Services.Auth;
 
@@ -26,7 +26,7 @@ public class AuthService : IAuthService
 
     private static string NormEmail(string s) => (s ?? "").Trim().ToLowerInvariant();
 
-    public async Task<object> RegisterStartAsync(AuthController.RegisterStartRequest req)
+    public async Task<object> RegisterStartAsync(RegisterStartRequest req)
     {
         var emailAddr = NormEmail(req.Email);
         var password = req.Password ?? "";
@@ -61,7 +61,7 @@ public class AuthService : IAuthService
         return new { next = "verify-code" };
     }
 
-    public async Task<string> RegisterCompleteAsync(AuthController.RegisterCompleteRequest req)
+    public async Task<string> RegisterCompleteAsync(RegisterCompleteRequest req)
     {
         var emailAddr = NormEmail(req.Email);
         var code = (req.Code ?? "").Trim();
@@ -87,7 +87,7 @@ public class AuthService : IAuthService
         return JwtTokenService.CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
     }
 
-    public async Task<string> LoginAsync(AuthController.LoginRequest req)
+    public async Task<string> LoginAsync(LoginRequest req)
     {
         var emailAddr = NormEmail(req.Email);
         var password = req.Password ?? "";
@@ -109,7 +109,7 @@ public class AuthService : IAuthService
         return JwtTokenService.CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
     }
 
-    public async Task<object> ForgotPasswordAsync(AuthController.ForgotPasswordRequest req)
+    public async Task<object> ForgotPasswordAsync(ForgotPasswordRequest req)
     {
         var emailAddr = NormEmail(req.Email);
 
@@ -124,7 +124,7 @@ public class AuthService : IAuthService
         return new { next = "verify-code" };
     }
 
-    public async Task<string> ResetPasswordAsync(AuthController.ResetPasswordRequest req)
+    public async Task<string> ResetPasswordAsync(ResetPasswordRequest req)
     {
         var emailAddr = NormEmail(req.Email);
         var code = (req.Code ?? "").Trim();
@@ -151,7 +151,7 @@ public class AuthService : IAuthService
         return JwtTokenService.CreateAccessJwt(user.Id, user.Email, user.Role, _cfg);
     }
 
-    public async Task<object> RequestCodeAsync(AuthController.RequestCodeRequest req)
+    public async Task<object> RequestCodeAsync(RequestCodeRequest req)
     {
         var emailAddr = NormEmail(req.Email);
 
