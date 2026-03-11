@@ -15,7 +15,14 @@
             position:absolute; inset:0; pointer-events:none;
             display:flex; justify-content:space-between; align-items:flex-start;
             padding: clamp(14px, 2vw, 26px);
+            transition: opacity .4s ease, visibility .4s ease;
         }
+
+        .hud.hidden{
+            opacity:0;
+            visibility:hidden;
+        }
+
         .room{
             color:#fff; font-weight:900; letter-spacing:.12em; text-transform:uppercase;
             font-size: clamp(18px, 2.6vw, 42px);
@@ -28,6 +35,7 @@
             max-width: 55vw;
             overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
         }
+
         .qr{
             display:flex; flex-direction:column; align-items:center; gap:10px;
             background: rgba(0,0,0,.35);
@@ -36,10 +44,12 @@
             padding: 12px;
             backdrop-filter: blur(6px);
         }
+
         #qrImg{
             width: clamp(120px, 14vw, 220px);
             height:auto; background:#fff; border-radius: 12px; padding: 8px;
         }
+
         .hint{
             color:#fff; font-size: 12px; opacity: .85; text-align:center;
             max-width: 260px;
@@ -48,7 +58,7 @@
 </head>
 <body>
 <div class="stage">
-    <video id="video" controls muted playsinline></video>
+    <video id="video" muted playsinline disablepictureinpicture></video>
 
     <div class="hud">
         <div class="room" id="roomText">ROOM —</div>
@@ -61,34 +71,52 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
 <script>
-    // ===== Params =====
     const params = new URLSearchParams(location.search);
     const ROOM = (params.get("room") || "").trim().toUpperCase();
     if(!ROOM) alert("Abra como screen.html?room=ABC123");
 
-    // ===== UI =====
     const roomText = document.getElementById("roomText");
     const video = document.getElementById("video");
     const qrImg = document.getElementById("qrImg");
     const qrHint = document.getElementById("qrHint");
+    const hud = document.querySelector(".hud");
 
     roomText.textContent = `ROOM: ${ROOM}`;
 
-    // ===== QR URL =====
-    // Usa a mesma origem do Screen.
-    // IMPORTANTÍSSIMO: abra o Screen usando o IP (não localhost) pra QR sair com IP.
     const baseOrigin = window.location.origin;
     const REG_URL = `${baseOrigin}/register.html?room=${encodeURIComponent(ROOM)}`;
 
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(REG_URL)}`;
 
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-        qrHint.textContent = "Abra o telão pelo IP (ex: http://192.168.178.21:5031/screen.html...) para o QR funcionar no celular.";
+        qrHint.textContent = "Abra o telão pelo IP para o QR funcionar no celular.";
     } else {
         qrHint.textContent = "Escaneie para entrar e ouvir o áudio no celular.";
     }
 
-    // ===== SignalR + State apply =====
+    function showHudForFiveMinutes() {
+        hud.classList.remove("hidden");
+
+        clearTimeout(window.__hudTimer);
+        window.__hudTimer = setTimeout(() => {
+            hud.classList.add("hidden");
+        }, 5 * 60 * 1000);
+    }
+
+    async function tryEnterFullscreen() {
+        const el = document.documentElement;
+
+        try {
+            if (el.requestFullscreen) {
+                await el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+                await el.webkitRequestFullscreen();
+            }
+        } catch (e) {
+            console.warn("fullscreen blocked", e);
+        }
+    }
+
     let conn = null;
     let currentVideoUrl = "";
     let lastState = null;
@@ -112,16 +140,13 @@
             video.src = vurl;
             video.load();
 
-            // reaplica sincronismo quando mídia ficar pronta
             video.onloadedmetadata = () => { if (lastState) applyState(lastState, "loadedmetadata"); };
             video.oncanplay = () => { if (lastState) applyState(lastState, "canplay"); };
         }
 
-        // play/pause
         if (state.isPlaying) { try { await video.play(); } catch {} }
         else { video.pause(); }
 
-        // seek
         const target = Math.max(0, (state.positionMs ?? 0)) / 1000;
         if (video.readyState >= 1) {
             if (Math.abs(video.currentTime - target) > 0.35) {
@@ -137,6 +162,9 @@
     }
 
     async function start(){
+        showHudForFiveMinutes();
+        await tryEnterFullscreen();
+
         const hubUrl = location.origin + "/hubs/rooms";
 
         conn = new signalR.HubConnectionBuilder()
