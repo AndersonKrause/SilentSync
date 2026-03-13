@@ -30,15 +30,24 @@ body {
 .topline {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
     align-items: flex-start;
+    gap: 12px;
     margin-bottom: 18px;
 }
 
 .brand {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 28px;
+    font-weight: 800;
     color: #4f46e5;
+    letter-spacing: 0.03em;
+}
+
+.brand-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    margin-bottom:10px;
 }
 
 .roomline {
@@ -151,6 +160,26 @@ input:focus {
 
 .hide {
     display: none;
+}
+
+.lang-switch{
+    position: static;
+}
+
+.lang-switch select{
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    padding:5px 8px;
+    font-size:12px;
+    background:white;
+    cursor:pointer;
+}
+
+.top-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
 }
 
 @media (max-width: 480px) {

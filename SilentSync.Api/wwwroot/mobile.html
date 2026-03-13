@@ -7,22 +7,35 @@
     <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
+
+<!-- Language select -->
+<div class="lang-switch">
+    <select id="languageSelect">
+        <option value="pt">🇧🇷 PT</option>
+        <option value="en">🇺🇸 EN</option>
+        <option value="de">🇩🇪 DE</option>
+    </select>
+</div>
+
 <div class="mobile-shell">
     <div class="topbar">
         <div>
-            <div class="label">Room:</div>
+            <div class="label" data-i18n="room">Sala</div>
             <div class="room" id="roomEcho">—</div>
         </div>
 
         <div class="right">
             <span id="status" class="pill">desconectado</span>
-            <button id="logoutBtn" type="button" class="logout-btn">Sair</button>
+            <button id="logoutBtn" type="button" class="logout-btn" data-i18n="logout">Sair</button>
         </div>
     </div>
 
     <div class="player-card">
+        <h3 data-i18n="audio">Áudio sincronizado</h3>
+
         <audio id="audio" controls playsinline></audio>
-        <button id="playBtn" disabled>Play</button>
+
+        <button id="playBtn" type="button" disabled data-i18n="play">Play</button>
     </div>
 </div>
 
@@ -44,8 +57,8 @@
 <pre id="log" hidden></pre>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+<script src="js/i18n.js"></script>
 <script src="js/mobile.js"></script>
 
 </body>
