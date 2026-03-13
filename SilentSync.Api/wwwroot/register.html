@@ -1,114 +1,171 @@
 ﻿<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>SilentSync - Login</title>
-    <link rel="stylesheet" href="css/register.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SilentSync - Entrar</title>
+    <link rel="stylesheet" href="css/register.css" />
 </head>
 <body>
-<h2>Login <span id="status" class="pill">pronto</span></h2>
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="topline">
+            <div>
+                <div class="brand">SilentSync</div>
+                <div class="roomline">Room: <b id="roomText">—</b></div>
+            </div>
+            <span id="status" class="pill">pronto</span>
+        </div>
 
-<div class="card">
-    <div class="small">Sala: <b id="roomText">—</b></div>
-    <div class="small" style="margin-top:6px">Após autenticar, você será direcionado para o Mobile para ouvir o áudio.</div>
-</div>
+        <!-- LOGIN -->
+        <section id="viewLogin">
+            <h1>Entrar</h1>
+            <p class="subtitle">Acesse sua conta para continuar</p>
 
-<div class="card">
-    <div class="tabs">
-        <button id="tabLogin" class="tab active" type="button">Entrar</button>
-        <button id="tabCreate" class="tab" type="button">Criar conta</button>
-        <button id="tabForgot" class="tab" type="button">Esqueci a senha</button>
+            <label for="loginEmail">Email</label>
+            <input
+                    id="loginEmail"
+                    type="email"
+                    placeholder="voce@exemplo.com"
+                    autocomplete="email"
+            />
+
+            <label for="loginPassword">Senha</label>
+            <input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Digite sua senha"
+                    autocomplete="current-password"
+            />
+
+            <button id="loginBtn" class="primary-btn" type="button">Entrar</button>
+
+            <div class="link-stack">
+                <button id="showCreateBtn" class="link-btn" type="button">Criar conta</button>
+                <button id="showForgotBtn" class="link-btn" type="button">Esqueci minha senha</button>
+            </div>
+
+            <div id="loginInfo" class="feedback"></div>
+        </section>
+
+        <!-- CREATE STEP 1 -->
+        <section id="viewCreateStep1" class="hide">
+            <h1>Criar conta</h1>
+            <p class="subtitle">Preencha seus dados para receber um código de confirmação</p>
+
+            <label for="createEmail">Email</label>
+            <input
+                    id="createEmail"
+                    type="email"
+                    placeholder="voce@exemplo.com"
+                    autocomplete="email"
+            />
+
+            <label for="createPw1">Senha</label>
+            <input
+                    id="createPw1"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    autocomplete="new-password"
+            />
+
+            <label for="createPw2">Confirmar senha</label>
+            <input
+                    id="createPw2"
+                    type="password"
+                    placeholder="Repita a senha"
+                    autocomplete="new-password"
+            />
+
+            <button id="createStartBtn" class="primary-btn" type="button">Enviar código</button>
+            <button id="backToLoginFromCreateBtn" class="link-btn" type="button">Voltar para entrar</button>
+
+            <div id="createInfo" class="feedback"></div>
+        </section>
+
+        <!-- CREATE STEP 2 -->
+        <section id="viewCreateStep2" class="hide">
+            <h1>Confirmar cadastro</h1>
+            <p class="subtitle">
+                Digite o código enviado para <b id="createEmailEcho"></b>
+            </p>
+
+            <label for="createCode">Código</label>
+            <input
+                    id="createCode"
+                    type="text"
+                    placeholder="Digite o código"
+                    autocomplete="one-time-code"
+            />
+
+            <button id="createCompleteBtn" class="primary-btn" type="button">Concluir cadastro</button>
+            <button id="createResendBtn" class="secondary-btn" type="button">Reenviar código</button>
+            <button id="backToLoginFromCreateCodeBtn" class="link-btn" type="button">Voltar para entrar</button>
+
+            <div id="createCodeInfo" class="feedback"></div>
+        </section>
+
+        <!-- FORGOT STEP 1 -->
+        <section id="viewForgotStep1" class="hide">
+            <h1>Esqueci minha senha</h1>
+            <p class="subtitle">Informe seu email para receber um código de redefinição</p>
+
+            <label for="forgotEmail">Email</label>
+            <input
+                    id="forgotEmail"
+                    type="email"
+                    placeholder="voce@exemplo.com"
+                    autocomplete="email"
+            />
+
+            <button id="forgotSendBtn" class="primary-btn" type="button">Enviar código</button>
+            <button id="backToLoginFromForgotBtn" class="link-btn" type="button">Voltar para entrar</button>
+
+            <div id="forgotInfo" class="feedback"></div>
+        </section>
+
+        <!-- FORGOT STEP 2 -->
+        <section id="viewForgotStep2" class="hide">
+            <h1>Redefinir senha</h1>
+            <p class="subtitle">
+                Digite o código enviado para <b id="forgotEmailEcho"></b>
+            </p>
+
+            <label for="forgotCode">Código</label>
+            <input
+                    id="forgotCode"
+                    type="text"
+                    placeholder="Digite o código"
+                    autocomplete="one-time-code"
+            />
+
+            <label for="forgotPw1">Nova senha</label>
+            <input
+                    id="forgotPw1"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    autocomplete="new-password"
+            />
+
+            <label for="forgotPw2">Confirmar nova senha</label>
+            <input
+                    id="forgotPw2"
+                    type="password"
+                    placeholder="Repita a senha"
+                    autocomplete="new-password"
+            />
+
+            <button id="forgotResetBtn" class="primary-btn" type="button">Salvar nova senha</button>
+            <button id="forgotResendBtn" class="secondary-btn" type="button">Reenviar código</button>
+            <button id="backToLoginFromForgotResetBtn" class="link-btn" type="button">Voltar para entrar</button>
+
+            <div id="forgotCodeInfo" class="feedback"></div>
+        </section>
     </div>
 </div>
 
-<!-- LOGIN (B1) -->
-<div class="card" id="panelLogin">
-    <h3 style="margin:0 0 8px 0;">Entrar</h3>
+<pre id="log" class="hide"></pre>
 
-    <label>Email</label>
-    <input id="loginEmail" placeholder="you@email.com" autocomplete="email"/>
-
-    <label>Senha</label>
-    <input id="loginPassword" type="password" placeholder="sua senha" autocomplete="current-password"/>
-
-    <button id="loginBtn">Entrar</button>
-
-    <div id="loginInfo" class="small"></div>
-</div>
-
-<!-- CREATE (A) Step 1 -->
-<div class="card hide" id="panelCreate1">
-    <h3 style="margin:0 0 8px 0;">Criar conta</h3>
-
-    <label>Email</label>
-    <input id="createEmail" placeholder="you@email.com" autocomplete="email"/>
-
-    <label>Senha</label>
-    <input id="createPw1" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
-
-    <label>Repita a senha</label>
-    <input id="createPw2" type="password" placeholder="repita a senha" autocomplete="new-password"/>
-
-    <button id="createStartBtn">Enviar código de verificação</button>
-
-    <div id="createInfo" class="small"></div>
-</div>
-
-<!-- CREATE (A) Step 2 -->
-<div class="card hide" id="panelCreate2">
-    <h3 style="margin:0 0 8px 0;">Confirmar código</h3>
-
-    <div class="small">Enviamos um código para <b id="createEmailEcho">—</b>.</div>
-
-    <label>Código (6 dígitos)</label>
-    <input id="createCode" inputmode="numeric" maxlength="6" placeholder="ex: 963305"/>
-
-    <div class="two">
-        <button id="createCompleteBtn">Confirmar e entrar</button>
-        <button id="createResendBtn" type="button">Reenviar código</button>
-    </div>
-
-    <div id="createCodeInfo" class="small"></div>
-</div>
-
-<!-- FORGOT Step 1 -->
-<div class="card hide" id="panelForgot1">
-    <h3 style="margin:0 0 8px 0;">Esqueci a senha</h3>
-
-    <label>Email</label>
-    <input id="forgotEmail" placeholder="you@email.com" autocomplete="email"/>
-
-    <button id="forgotSendBtn">Enviar código</button>
-
-    <div id="forgotInfo" class="small"></div>
-</div>
-
-<!-- FORGOT Step 2 -->
-<div class="card hide" id="panelForgot2">
-    <h3 style="margin:0 0 8px 0;">Redefinir senha</h3>
-
-    <div class="small">Enviamos um código para <b id="forgotEmailEcho">—</b>.</div>
-
-    <label>Código (6 dígitos)</label>
-    <input id="forgotCode" inputmode="numeric" maxlength="6" placeholder="ex: 963305"/>
-
-    <label>Nova senha</label>
-    <input id="forgotPw1" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
-
-    <label>Repita a nova senha</label>
-    <input id="forgotPw2" type="password" placeholder="repita a senha" autocomplete="new-password"/>
-
-    <div class="two">
-        <button id="forgotResetBtn">Salvar e entrar</button>
-        <button id="forgotResendBtn" type="button">Reenviar código</button>
-    </div>
-
-    <div id="forgotCodeInfo" class="small"></div>
-</div>
-
-<pre id="log"></pre>
 <script src="js/register.js"></script>
-
 </body>
 </html>
