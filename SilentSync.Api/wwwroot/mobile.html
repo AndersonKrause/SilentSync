@@ -5,75 +5,49 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>SilentSync - Mobile</title>
     <link rel="stylesheet" href="css/mobile.css">
-    
 </head>
 <body>
-<h2>Mobile <span id="status" class="pill">desconectado</span></h2>
+<div class="mobile-shell">
+    <div class="topbar">
+        <div>
+            <div class="label">Room:</div>
+            <div class="room" id="roomEcho">—</div>
+        </div>
 
-<!-- INFO -->
-<div class="card" id="infoCard">
-    <div class="small">
-        Se você não estiver logado, esta página abre o <b>register</b> automaticamente.
-    </div>
-    <div class="small" style="margin-top:6px">
-        Room: <b id="roomEcho">—</b>
-    </div>
-
-    <div class="two" style="margin-top:10px">
-        <button id="goRegisterBtn" type="button">Ir para Registro</button>
-        <button id="logoutBtn" type="button">Sair</button>
+        <div class="right">
+            <span id="status" class="pill">desconectado</span>
+            <button id="logoutBtn" type="button" class="logout-btn">Sair</button>
+        </div>
     </div>
 
-    <div id="infoText" class="small"></div>
-</div>
-
-<!-- JOIN ROOM (vai sumir quando vier via QR: ?room=XXXXXX) -->
-<div class="card" id="joinCard">
-    <h3 style="margin:0 0 8px 0;">Entrar na sala</h3>
-
-    <label>Room Code</label>
-    <input id="roomCode" placeholder="6 digits"/>
-
-    <label>Display Name</label>
-    <input id="displayName" placeholder="Seu nome (ex: Bruna)"/>
-
-    <button id="joinBtn" disabled>Entrar na sala</button>
-
-    <div class="small">
-        O app guarda um <b>deviceId</b> no navegador do celular para você não “criar outro usuário” toda vez.
-    </div>
-
-    <div id="joinInfo" class="small"></div>
-</div>
-
-<!-- PLAYER -->
-<div class="card">
-    <h3 style="margin:0 0 8px 0;">Áudio sincronizado</h3>
-
-    <div>Offset (ms): <b id="offset">?</b> | RTT (ms): <b id="rtt">?</b></div>
-    <div>Target position (ms): <b id="targetPos">?</b></div>
-
-    <div style="margin-top:8px">
-        <div><b>Audio URL:</b></div>
-        <div id="audioUrlText" class="mono" style="word-break:break-all; font-size:12px;"></div>
-    </div>
-
-    <audio id="audio" controls playsinline></audio>
-
-    <button id="playBtn" disabled>Play áudio (manual)</button>
-
-    <div class="small">
-        Dica: alguns celulares bloqueiam autoplay. Se não tocar, use o botão acima.
+    <div class="player-card">
+        <audio id="audio" controls playsinline></audio>
+        <button id="playBtn" disabled>Play</button>
     </div>
 </div>
 
-<pre id="log"></pre>
+<!-- elementos mantidos só para o JS -->
+<button id="goRegisterBtn" type="button" hidden>Ir para Registro</button>
 
-<!-- SignalR -->
+<div id="joinCard" hidden>
+    <input id="roomCode" />
+    <input id="displayName" />
+    <button id="joinBtn" disabled>Entrar</button>
+    <div id="joinInfo"></div>
+</div>
+
+<div id="infoText" hidden></div>
+<b id="offset" hidden>?</b>
+<b id="rtt" hidden>?</b>
+<b id="targetPos" hidden>?</b>
+<div id="audioUrlText" hidden></div>
+<pre id="log" hidden></pre>
+
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-<!-- HLS for Android/Chrome -->
+
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
 <script src="js/mobile.js"></script>
 
 </body>
+
 </html>
