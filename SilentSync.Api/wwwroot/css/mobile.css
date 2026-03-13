@@ -90,6 +90,19 @@ audio {
     width: 100%;
 }
 
+.lang-switch{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:10;
+}
+
+.lang-switch select{
+    border-radius:8px;
+    padding:4px 6px;
+    font-size:12px;
+}
+
 @media (max-width: 520px) {
     .topbar {
         flex-direction: column;
@@ -103,4 +116,5 @@ audio {
     .room {
         font-size: 24px;
     }
+    
 }

@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
+
+<!-- Language select -->
+<div class="lang-switch">
+    <select id="languageSelect">
+        <option value="pt">🇧🇷 PT</option>
+        <option value="en">🇺🇸 EN</option>
+        <option value="de">🇩🇪 DE</option>
+    </select>
+</div>
+
 <h2 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
     Admin
     <span id="status" class="pill">desconectado</span>
@@ -99,6 +109,7 @@
 <pre id="log"></pre>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/admin.js"></script>
 
 </body>
