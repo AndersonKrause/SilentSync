@@ -4,39 +4,46 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>SilentSync - Mobile</title>
-    <link rel="stylesheet" href="../css/mobile.css">
+    <link rel="stylesheet" href="../css/mobile.css?v=6">
 </head>
 <body>
 
-<!-- Language select -->
-<div class="lang-switch">
-    <select id="languageSelect">
-        <option value="pt">🇧🇷 PT</option>
-        <option value="en">🇺🇸 EN</option>
-        <option value="de">🇩🇪 DE</option>
-    </select>
-</div>
-
 <div class="mobile-shell">
-    <div class="topbar">
-        <div class="room-line">
-            <span class="label" data-i18n="room">Sala</span>
-            <span class="room" id="roomEcho">—</span>
+
+    <div class="mobile-card">
+        <div class="topline">
+            <div class="brand-row">
+                <div class="roomline">
+                    <span data-i18n="room">Sala</span>: <b id="roomEcho">—</b>
+                </div>
+
+                <div class="lang-switch">
+                    <select id="languageSelect">
+                        <option value="pt">🇧🇷 PT</option>
+                        <option value="en">🇺🇸 EN</option>
+                        <option value="de">🇩🇪 DE</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
-        <div class="right">
-            <span id="status" class="pill">desconectado</span>
-            <button id="logoutBtn" type="button" class="logout-btn" data-i18n="logout">Sair</button>
-        </div>
+        <span id="status" class="pill">desconectado</span>
+
+        <button id="logoutBtn" type="button" class="primary-btn" data-i18n="logout">
+            Sair
+        </button>
     </div>
 
-    <div class="player-card">
+    <div class="mobile-card">
         <h3 data-i18n="audio">Áudio sincronizado</h3>
 
         <audio id="audio" controls playsinline></audio>
 
-        <button id="playBtn" type="button" disabled data-i18n="play">Play</button>
+        <button id="playBtn" type="button" disabled class="secondary-btn" data-i18n="play">
+            Play
+        </button>
     </div>
+
 </div>
 
 <!-- elementos mantidos só para o JS -->
@@ -62,5 +69,4 @@
 <script src="../js/mobile.js?v=3"></script>
 
 </body>
-
 </html>
