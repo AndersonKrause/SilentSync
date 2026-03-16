@@ -1,6 +1,6 @@
 ﻿const translations = {
     pt: {
-        room: "Sala:",
+        room: "Sala",
         login: "Entrar",
         email: "Email",
         password: "Senha",
@@ -32,7 +32,7 @@
     },
 
     en: {
-        room: "Room:",
+        room: "Room",
         login: "Sign in",
         email: "Email",
         password: "Password",
@@ -64,7 +64,7 @@
     },
 
     de: {
-        room: "Raum:",
+        room: "Raum",
         login: "Anmelden",
         email: "E-Mail",
         password: "Passwort",
