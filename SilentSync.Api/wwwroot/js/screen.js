@@ -2,7 +2,7 @@
     const ROOM = (params.get("room") || "").toUpperCase();
 
     if(!ROOM){
-    alert("Abra como screen.html?room=ABC123");
+    alert("Abra como /pages/screen.html?room=ABC123");
 }
 
     const video = document.getElementById("video");
@@ -16,7 +16,7 @@
 
     roomText.textContent = "ROOM: " + ROOM;
 
-    const registerUrl = location.origin + "/register.html?room=" + encodeURIComponent(ROOM);
+    const registerUrl = location.origin + "/pages/register.html?room=" + encodeURIComponent(ROOM);
 
     qrImg.src =
     "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data="

@@ -31,7 +31,7 @@
 }
 
     function redirectToAdminLogin() {
-    location.href = "/register.html?next=admin";
+    location.href = "/pages/register.html?next=admin";
 }
 
     function logout() {
@@ -77,7 +77,7 @@
 
     if (role !== "host" && role !== "admin") {
     alert("Você não tem permissão para acessar o Admin.");
-    location.href = "/mobile.html";
+    location.href = "/pages/mobile.html";
 }
 } catch (e) {
     console.error(e);
@@ -98,8 +98,8 @@
     logoutBtn.onclick = logout;
 
     function buildLinks(roomCode) {
-    const screenUrl = `${PUBLIC_ORIGIN}/screen.html?room=${encodeURIComponent(roomCode)}`;
-    const regUrl = `${PUBLIC_ORIGIN}/register.html?room=${encodeURIComponent(roomCode)}`;
+    const screenUrl = `${PUBLIC_ORIGIN}/pages/screen.html?room=${encodeURIComponent(roomCode)}`;
+    const regUrl = `${PUBLIC_ORIGIN}/pages/register.html?room=${encodeURIComponent(roomCode)}`;
     return { screenUrl, regUrl };
 }
 
@@ -161,7 +161,7 @@
 
     if (res.status === 403) {
     alert("Seu usuário não tem permissão para criar rooms.");
-    location.href = "/mobile.html";
+    location.href = "/pages/mobile.html";
     return;
 }
 
