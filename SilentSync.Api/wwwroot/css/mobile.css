@@ -36,12 +36,6 @@ body {
     margin-bottom: 4px;
 }
 
-.room {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-}
-
 .right {
     display: flex;
     flex-direction: column;
@@ -101,6 +95,16 @@ audio {
     border-radius:8px;
     padding:4px 6px;
     font-size:12px;
+}
+
+.room-line{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.room{
+    font-weight:700;
 }
 
 @media (max-width: 520px) {
