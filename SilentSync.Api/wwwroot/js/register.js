@@ -26,11 +26,6 @@ function getRoom() {
 const ROOM = getRoom();
 if (roomText) roomText.textContent = ROOM || "—";
 
-function getNext() {
-    const qs = new URLSearchParams(location.search);
-    return (qs.get("next") || "").trim().toLowerCase();
-}
-
 async function fetchMe() {
     const token = localStorage.getItem(LS.token);
     if (!token) return null;
@@ -53,13 +48,13 @@ async function gotoNext() {
     const role = (me?.role || "").toLowerCase();
 
     if (role === "admin" || role === "host") {
-        location.href = "/admin.html";
+        location.href = "/pages/admin.html";
         return;
     }
 
     const url = ROOM
-        ? `/mobile.html?room=${encodeURIComponent(ROOM)}`
-        : "/mobile.html";
+        ? `/pages/mobile.html?room=${encodeURIComponent(ROOM)}`
+        : "/pages/mobile.html";
 
     location.href = url;
 }

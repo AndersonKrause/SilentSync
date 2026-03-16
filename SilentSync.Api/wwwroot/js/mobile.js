@@ -79,7 +79,7 @@
 
     function goRegister(){
     const room = norm(document.getElementById('roomCode').value) || getRoomFromQuery();
-    const url = room ? `/register.html?room=${encodeURIComponent(room)}` : `/register.html`;
+    const url = room ? `/pages/register.html?room=${encodeURIComponent(room)}` : `/pages/register.html`;
     location.href = url;
 }
 
