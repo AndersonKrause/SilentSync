@@ -209,4 +209,5 @@ public class AuthService : IAuthService
         _db.Users.Remove(user);
         await _db.SaveChangesAsync();
     }
+    
 }
