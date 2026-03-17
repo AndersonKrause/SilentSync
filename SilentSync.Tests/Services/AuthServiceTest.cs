@@ -60,4 +60,25 @@ public class AuthServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.DeleteUserByEmailAsync("missing@test.com"));
     }
+    
+    [Fact]
+    public async Task DeleteUserByEmailAsync_Should_Throw_When_User_Is_Admin()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var config = CreateConfiguration();
+        var fake = new FakeLoginCodeService();
+
+        db.Users.Add(new AppUser
+        {
+            Email = "admin@test.com",
+            Role = "admin"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new AuthService(db, config, fake);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.DeleteUserByEmailAsync("admin@test.com"));
+    }
 }
