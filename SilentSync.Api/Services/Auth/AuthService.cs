@@ -191,4 +191,22 @@ public class AuthService : IAuthService
 
         return user;
     }
+    
+    public async Task DeleteUserByEmailAsync(string email)
+    {
+        var emailAddr = NormEmail(email);
+
+        if (string.IsNullOrWhiteSpace(emailAddr) || !emailAddr.Contains("@"))
+            throw new ArgumentException("Invalid email.");
+
+        var user = await _db.Users.SingleOrDefaultAsync(u => u.Email == emailAddr);
+        if (user is null)
+            throw new KeyNotFoundException("User not found.");
+
+        if (string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Admin user cannot be deleted.");
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync();
+    }
 }

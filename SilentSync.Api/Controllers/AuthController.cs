@@ -135,7 +135,28 @@ public class AuthController : ControllerBase
             return StatusCode(429, ex.Message);
         }
     }
+    
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
 
+        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized("Invalid token.");
+
+        try
+        {
+            var user = await _authService.GetMeAsync(userId);
+            return Ok(user);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+    
     [Authorize]
     [HttpDelete("delete/user")]
     public async Task<IActionResult> DeleteUser()
@@ -157,24 +178,29 @@ public class AuthController : ControllerBase
         }
     }
 
-    [Authorize]
-    [HttpGet("me")]
-    public async Task<IActionResult> Me()
+    [Authorize(Roles = "host,admin")]
+    [HttpDelete("delete-by-email")]
+    public async Task<IActionResult> DeleteUserByEmail([FromQuery] string email)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? User.FindFirstValue("sub");
-
-        if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized("Invalid token.");
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest("Email is required.");
 
         try
         {
-            var user = await _authService.GetMeAsync(userId);
-            return Ok(user);
+            await _authService.DeleteUserByEmailAsync(email);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
         }
     }
 }
