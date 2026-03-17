@@ -47,4 +47,17 @@ public class AuthServiceTests
         var deleted = await db.Users.SingleOrDefaultAsync(u => u.Email == "user@test.com");
         Assert.Null(deleted);
     }
+    
+    [Fact]
+    public async Task DeleteUserByEmailAsync_Should_Throw_When_User_Does_Not_Exist()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var config = CreateConfiguration();
+        var fake = new FakeLoginCodeService();
+
+        var service = new AuthService(db, config, fake);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.DeleteUserByEmailAsync("missing@test.com"));
+    }
 }
