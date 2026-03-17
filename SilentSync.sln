@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		docker-compose.yml = docker-compose.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SilentSync.Tests", "SilentSync.Tests\SilentSync.Tests.csproj", "{DAB5DAD6-2E5E-4DE4-B3D5-74610E12B925}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,6 +21,10 @@ Global
 		{F162E836-4911-07C4-8230-8476EBCDC951}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F162E836-4911-07C4-8230-8476EBCDC951}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F162E836-4911-07C4-8230-8476EBCDC951}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAB5DAD6-2E5E-4DE4-B3D5-74610E12B925}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAB5DAD6-2E5E-4DE4-B3D5-74610E12B925}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAB5DAD6-2E5E-4DE4-B3D5-74610E12B925}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAB5DAD6-2E5E-4DE4-B3D5-74610E12B925}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
