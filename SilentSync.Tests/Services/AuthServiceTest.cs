@@ -195,4 +195,52 @@ public class AuthServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.GetMeAsync(Guid.NewGuid()));
     }
+    
+    [Fact]
+    public async Task RegisterStartAsync_Should_Throw_When_Email_Is_Invalid()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var config = CreateConfiguration();
+        var fake = new FakeLoginCodeService();
+
+        var service = new AuthService(db, config, fake);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.RegisterStartAsync(new RegisterStartRequest("invalid-email", "123456")));
+    }
+
+    [Fact]
+    public async Task RegisterStartAsync_Should_Throw_When_Password_Is_Too_Short()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var config = CreateConfiguration();
+        var fake = new FakeLoginCodeService();
+
+        var service = new AuthService(db, config, fake);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123")));
+    }
+
+    [Fact]
+    public async Task RegisterStartAsync_Should_Throw_When_User_Is_Already_Registered()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var config = CreateConfiguration();
+        var fake = new FakeLoginCodeService();
+
+        db.Users.Add(new AppUser
+        {
+            Email = "user@test.com",
+            Role = "user",
+            PasswordHash = "already-hashed-password"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new AuthService(db, config, fake);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123456")));
+    }
 }
