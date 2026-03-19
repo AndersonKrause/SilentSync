@@ -40,207 +40,249 @@ public class AuthServiceTests
     public async Task DeleteUserByEmailAsync_Should_Delete_User_When_User_Exists()
     {
         // Arrange
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
-
-        db.Users.Add(new AppUser
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
         {
-            Email = "user@test.com",
-            Role = "user"
-        });
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        await db.SaveChangesAsync();
+            db.Users.Add(new AppUser
+            {
+                Email = "user@test.com",
+                Role = "user"
+            });
 
-        var service = new AuthService(db, config, fake);
+            await db.SaveChangesAsync();
 
-        // Act
-        await service.DeleteUserByEmailAsync("user@test.com");
+            var service = new AuthService(db, config, fake);
 
-        // Assert
-        var deleted = await db.Users.SingleOrDefaultAsync(u => u.Email == "user@test.com");
-        Assert.Null(deleted);
+            // Act
+            await service.DeleteUserByEmailAsync("user@test.com");
+
+            // Assert
+            var deleted = await db.Users.SingleOrDefaultAsync(u => u.Email == "user@test.com");
+            Assert.Null(deleted);
+        }
     }
     
     [Fact]
     public async Task DeleteUserByEmailAsync_Should_Throw_When_User_Does_Not_Exist()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.DeleteUserByEmailAsync("missing@test.com"));
+            await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => service.DeleteUserByEmailAsync("missing@test.com"));
+        }
     }
-    
+
     [Fact]
     public async Task DeleteUserByEmailAsync_Should_Throw_When_User_Is_Admin()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
-
-        db.Users.Add(new AppUser
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
         {
-            Email = "admin@test.com",
-            Role = "admin"
-        });
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        await db.SaveChangesAsync();
+            db.Users.Add(new AppUser
+            {
+                Email = "admin@test.com",
+                Role = "admin"
+            });
 
-        var service = new AuthService(db, config, fake);
+            await db.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.DeleteUserByEmailAsync("admin@test.com"));
+            var service = new AuthService(db, config, fake);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteUserByEmailAsync("admin@test.com"));
+        }
     }
-    
+
     [Fact]
     public async Task LoginAsync_Should_Throw_When_User_Does_Not_Exist()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(new LoginRequest("missing@test.com", "123456")));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.LoginAsync(new LoginRequest("missing@test.com", "123456")));
+        }
     }
-    
+
     [Fact]
     public async Task LoginAsync_Should_Throw_When_Password_Is_Wrong()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var user = CreateUserWithPassword("user@test.com", "correct-password");
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
+            var user = CreateUserWithPassword("user@test.com", "correct-password");
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(new LoginRequest("user@test.com", "wrong-password")));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.LoginAsync(new LoginRequest("user@test.com", "wrong-password")));
+        }
     }
-    
+
     [Fact]
     public async Task LoginAsync_Should_Return_Token_When_Credentials_Are_Correct()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var user = CreateUserWithPassword("user@test.com", "correct-password");
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
+            var user = CreateUserWithPassword("user@test.com", "correct-password");
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        var token = await service.LoginAsync(
-            new LoginRequest("user@test.com", "correct-password"));
+            var token = await service.LoginAsync(
+                new LoginRequest("user@test.com", "correct-password"));
 
-        Assert.False(string.IsNullOrWhiteSpace(token));
+            Assert.False(string.IsNullOrWhiteSpace(token));
+        }
     }
-    
+
     [Fact]
     public async Task GetMeAsync_Should_Return_User_Data_When_User_Exists()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
-
-        var user = new AppUser
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
         {
-            Id = Guid.NewGuid(),
-            Email = "me@test.com",
-            Role = "user",
-            CreatedAtUtc = DateTime.UtcNow,
-            EmailVerifiedAtUtc = DateTime.UtcNow
-        };
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
+            var user = new AppUser
+            {
+                Id = Guid.NewGuid(),
+                Email = "me@test.com",
+                Role = "user",
+                CreatedAtUtc = DateTime.UtcNow,
+                EmailVerifiedAtUtc = DateTime.UtcNow
+            };
 
-        var service = new AuthService(db, config, fake);
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
 
-        var result = await service.GetMeAsync(user.Id);
+            var service = new AuthService(db, config, fake);
 
-        Assert.NotNull(result);
+            var result = await service.GetMeAsync(user.Id);
 
-        var idProp = result.GetType().GetProperty("Id");
-        var emailProp = result.GetType().GetProperty("Email");
-        var roleProp = result.GetType().GetProperty("Role");
+            Assert.NotNull(result);
 
-        Assert.NotNull(idProp);
-        Assert.NotNull(emailProp);
-        Assert.NotNull(roleProp);
+            var idProp = result.GetType().GetProperty("Id");
+            var emailProp = result.GetType().GetProperty("Email");
+            var roleProp = result.GetType().GetProperty("Role");
 
-        Assert.Equal(user.Id, idProp!.GetValue(result));
-        Assert.Equal("me@test.com", emailProp!.GetValue(result));
-        Assert.Equal("user", roleProp!.GetValue(result));
+            Assert.NotNull(idProp);
+            Assert.NotNull(emailProp);
+            Assert.NotNull(roleProp);
+
+            Assert.Equal(user.Id, idProp!.GetValue(result));
+            Assert.Equal("me@test.com", emailProp!.GetValue(result));
+            Assert.Equal("user", roleProp!.GetValue(result));
+        }
     }
 
     [Fact]
     public async Task GetMeAsync_Should_Throw_When_User_Does_Not_Exist()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.GetMeAsync(Guid.NewGuid()));
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetMeAsync(Guid.NewGuid()));
+        }
     }
-    
+
     [Fact]
     public async Task RegisterStartAsync_Should_Throw_When_Email_Is_Invalid()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => service.RegisterStartAsync(new RegisterStartRequest("invalid-email", "123456")));
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegisterStartAsync(new RegisterStartRequest("invalid-email", "123456")));
+        }
     }
 
     [Fact]
     public async Task RegisterStartAsync_Should_Throw_When_Password_Is_Too_Short()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
+        {
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        var service = new AuthService(db, config, fake);
+            var service = new AuthService(db, config, fake);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123")));
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123")));
+        }
     }
 
     [Fact]
     public async Task RegisterStartAsync_Should_Throw_When_User_Is_Already_Registered()
     {
-        await using var db = TestDbContextFactory.Create();
-        var config = CreateConfiguration();
-        var fake = new FakeLoginCodeService();
-
-        db.Users.Add(new AppUser
+        var (db, connection) = TestDbContextFactory.Create();
+        await using (db)
+        await using (connection)
         {
-            Email = "user@test.com",
-            Role = "user",
-            PasswordHash = "already-hashed-password"
-        });
+            var config = CreateConfiguration();
+            var fake = new FakeLoginCodeService();
 
-        await db.SaveChangesAsync();
+            db.Users.Add(new AppUser
+            {
+                Email = "user@test.com",
+                Role = "user",
+                PasswordHash = "already-hashed-password"
+            });
 
-        var service = new AuthService(db, config, fake);
+            await db.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123456")));
+            var service = new AuthService(db, config, fake);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.RegisterStartAsync(new RegisterStartRequest("user@test.com", "123456")));
+        }
     }
 }
