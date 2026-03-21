@@ -2,7 +2,7 @@
     const ROOM = (params.get("room") || "").toUpperCase();
 
     if(!ROOM){
-    alert("Abra como /pages/screen.html?room=ABC123");
+    alert(t("openScreenWithRoom") + " /pages/screen.html?room=ABC123");
 }
 
     const video = document.getElementById("video");
@@ -24,10 +24,10 @@
 
     if(location.hostname === "localhost"){
     qrHint.textContent =
-        "Abra o telão pelo IP para o QR funcionar no celular";
+        t("screenQrHintLocalhost");
 }else{
     qrHint.textContent =
-        "Escaneie para entrar e ouvir o áudio no celular";
+        t("screenQrHintDefault");
 }
 
     function showHudFiveMinutes(){

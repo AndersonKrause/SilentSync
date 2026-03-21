@@ -1,116 +1,125 @@
 ﻿<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>SilentSync - Admin</title>
-    <link rel="stylesheet" href="../css/admin.css">
+    <link rel="stylesheet" href="../css/admin.css" />
 </head>
 <body>
 
-<!-- Language select -->
-<div class="lang-switch">
-    <select id="languageSelect">
-        <option value="pt">🇧🇷 PT</option>
-        <option value="en">🇺🇸 EN</option>
-        <option value="de">🇩🇪 DE</option>
-    </select>
+<div class="admin-shell">
+    <div class="admin-card">
+
+        <div class="topline">
+            <div class="brand-row">
+                <div class="brand">SilentSync</div>
+
+                <div class="lang-switch">
+                    <select id="languageSelect">
+                        <option value="pt">🇧🇷 PT</option>
+                        <option value="en">🇺🇸 EN</option>
+                        <option value="de">🇩🇪 DE</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1 data-i18n="adminTitle">Admin</h1>
+
+            <div class="header-actions">
+                <span id="status" class="pill" data-i18n="statusDisconnected">desconectado</span>
+                <span id="userInfo" class="small muted"></span>
+                <button id="logoutBtn" class="secondary-btn" data-i18n="logout">Sair</button>
+            </div>
+        </div>
+
+        <!-- ROOM -->
+        <section class="card">
+            <h2 data-i18n="roomTitle">Sala</h2>
+
+            <div class="actions two">
+                <button id="createRoomBtn" class="primary-btn" data-i18n="createRoomOpenScreen"></button>
+                <button id="openScreenBtn" class="secondary-btn" disabled data-i18n="openScreen"></button>
+            </div>
+
+            <label data-i18n="roomCode"></label>
+            <input id="roomCode" data-i18n-placeholder="roomCodePlaceholder" />
+
+            <div class="small">
+                <div><b data-i18n="screenLinkLabel"></b> <span id="screenLinkText" class="mono">—</span></div>
+                <div><b data-i18n="registerLinkLabel"></b> <span id="regLinkText" class="mono">—</span></div>
+            </div>
+
+            <div class="qr-row">
+                <img id="qrReg" data-i18n-alt="registerQrAlt" />
+                <button id="copyRegBtn" class="secondary-btn" disabled data-i18n="copyRegisterLink"></button>
+            </div>
+
+            <div class="small muted" data-i18n="publicOriginHint"></div>
+        </section>
+
+        <!-- GRID -->
+        <div class="grid">
+
+            <!-- MEDIA -->
+            <section class="card">
+                <h2 data-i18n="mediaConnectionTitle"></h2>
+
+                <label data-i18n="selectVideoLocal"></label>
+                <input id="file" type="file" accept="video/*"/>
+
+                <div class="small" data-i18n="mediaFlowHint"></div>
+
+                <div class="actions">
+                    <button id="uploadBtn" class="primary-btn" data-i18n="uploadBtnLabel"></button>
+                    <progress id="uploadProg" value="0" max="100"></progress>
+                    <div id="uploadInfo" class="small"></div>
+                </div>
+
+                <label data-i18n="audioUrlLabel"></label>
+                <input id="audioUrl" data-i18n-placeholder="audioUrlPlaceholder"/>
+
+                <label data-i18n="videoUrlLabel"></label>
+                <input id="videoUrl" data-i18n-placeholder="videoUrlPlaceholder"/>
+
+                <div class="actions">
+                    <button id="connectBtn" class="primary-btn" data-i18n="connectController"></button>
+                </div>
+
+                <div class="small muted" data-i18n="openScreenHint"></div>
+            </section>
+
+            <!-- CONTROLS -->
+            <section class="card">
+                <h2 data-i18n="controlsTitle"></h2>
+
+                <div class="actions two">
+                    <button id="playBtn" class="primary-btn" data-i18n="play"></button>
+                    <button id="pauseBtn" class="secondary-btn" data-i18n="pause"></button>
+                </div>
+
+                <label data-i18n="seekLabel"></label>
+                <input id="seekMs" data-i18n-placeholder="seekPlaceholder"/>
+
+                <div class="actions">
+                    <button id="seekBtn" class="primary-btn" data-i18n="seek"></button>
+                </div>
+
+                <div class="small" data-i18n="adminPreviewHint"></div>
+            </section>
+        </div>
+
+        <video id="video" controls muted playsinline></video>
+        <pre id="log"></pre>
+
+    </div>
 </div>
-
-<h2 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-    Admin
-    <span id="status" class="pill">desconectado</span>
-    <span id="userInfo" class="small muted"></span>
-    <button id="logoutBtn" class="btnSmall" type="button">Logout</button>
-</h2>
-
-<div class="card" style="margin-bottom:14px">
-    <h3 style="margin:0 0 8px 0;">Sala (Room)</h3>
-
-    <div class="actions two">
-        <button id="createRoomBtn">Criar Room (abre Telão)</button>
-        <button id="openScreenBtn" disabled>Abrir Telão</button>
-    </div>
-
-    <label>Room Code</label>
-    <input id="roomCode" placeholder="6 Digits Code"/>
-
-    <div class="small">
-        <div><b>Link Telão:</b> <span id="screenLinkText" class="mono">—</span></div>
-        <div><b>Link Registro (QR):</b> <span id="regLinkText" class="mono">—</span></div>
-    </div>
-
-    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <img id="qrReg" alt="QR Registro"
-             style="display:none; width:140px; height:auto; background:#fff; padding:8px; border-radius:12px; border:1px solid #e5e5e5;">
-        <button id="copyRegBtn" class="btnSmall" disabled>Copiar link do Registro</button>
-    </div>
-
-    <div class="small muted">
-        Importante: os links/QR aqui sempre usam a origem pública atual.
-    </div>
-</div>
-
-<div class="grid">
-    <div class="card">
-        <h3 style="margin:0 0 8px 0;">Mídia + Conexão</h3>
-
-        <label>Selecione o vídeo (local)</label>
-        <input id="file" type="file" accept="video/*"/>
-
-        <div class="small">
-            Fluxo: <b>Criar Room</b> → selecione vídeo → <b>Upload</b> → <b>Conectar</b> → Play/Pause/Seek.
-        </div>
-
-        <div class="actions">
-            <button id="uploadBtn">Upload (salvar vídeo + gerar áudio)</button>
-            <progress id="uploadProg" value="0" max="100" style="display:none"></progress>
-            <div id="uploadInfo" class="small"></div>
-        </div>
-
-        <label>Audio URL (gerada automaticamente)</label>
-        <input id="audioUrl" placeholder="(preenchida após upload)"/>
-
-        <label>Video URL (gerada automaticamente)</label>
-        <input id="videoUrl" placeholder="(preenchida após upload)"/>
-
-        <div class="actions">
-            <button id="connectBtn">Conectar (controller)</button>
-        </div>
-
-        <div class="small muted">
-            Dica: abra o telão em outra aba.
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 style="margin:0 0 8px 0;">Controles</h3>
-
-        <div class="actions two">
-            <button id="playBtn">Play</button>
-            <button id="pauseBtn">Pause</button>
-        </div>
-
-        <label>Seek (ms)</label>
-        <input id="seekMs" placeholder="ex: 83400"/>
-
-        <div class="actions">
-            <button id="seekBtn">Seek</button>
-        </div>
-
-        <div class="small">
-            O vídeo no admin é só preview. O telão toca o vídeo via URL enviada no estado.
-        </div>
-    </div>
-</div>
-
-<video id="video" controls muted playsinline></video>
-
-<pre id="log"></pre>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-<script src="../js/i18n.js?v=3"></script>
-<script src="../js/admin.js?v=3"></script>
+<script src="../js/i18n.js?v=5"></script>
+<script src="../js/admin.js?v=5"></script>
 
 </body>
 </html>
