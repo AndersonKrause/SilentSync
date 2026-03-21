@@ -1,151 +1,211 @@
-﻿    const params = new URLSearchParams(location.search);
-    const ROOM = (params.get("room") || "").toUpperCase();
+﻿const params = new URLSearchParams(location.search);
+const ROOM = (params.get("room") || "").trim().toUpperCase();
 
-    if(!ROOM){
-    alert(t("openScreenWithRoom") + " /pages/screen.html?room=ABC123");
+const video = document.getElementById("video");
+const roomText = document.getElementById("roomText");
+const qrImg = document.getElementById("qrImg");
+const qrHint = document.getElementById("qrHint");
+const hud = document.querySelector(".hud");
+
+const startOverlay = document.getElementById("startOverlay");
+const startBtn = document.getElementById("startBtn");
+
+let conn = null;
+let currentVideoUrl = "";
+let lastState = null;
+
+function debug(...args) {
+    console.log("[screen]", ...args);
 }
 
-    const video = document.getElementById("video");
-    const roomText = document.getElementById("roomText");
-    const qrImg = document.getElementById("qrImg");
-    const qrHint = document.getElementById("qrHint");
-    const hud = document.querySelector(".hud");
+function setRoomText() {
+    roomText.textContent = `${t("roomLabel")}: ${ROOM || t("emptyValue")}`;
+}
 
-    const startOverlay = document.getElementById("startOverlay");
-    const startBtn = document.getElementById("startBtn");
+function getRegisterUrl() {
+    if (!ROOM) {
+        return `${location.origin}/pages/register.html`;
+    }
 
-    roomText.textContent = "ROOM: " + ROOM;
+    return `${location.origin}/pages/register.html?room=${encodeURIComponent(ROOM)}`;
+}
 
-    const registerUrl = location.origin + "/pages/register.html?room=" + encodeURIComponent(ROOM);
+function configureQr() {
+    if (!ROOM) {
+        qrImg.style.display = "none";
+        qrHint.textContent = t("openScreenWithRoom");
+        return;
+    }
+
+    const registerUrl = getRegisterUrl();
 
     qrImg.src =
-    "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data="
-    + encodeURIComponent(registerUrl);
+        "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" +
+        encodeURIComponent(registerUrl);
 
-    if(location.hostname === "localhost"){
-    qrHint.textContent =
-        t("screenQrHintLocalhost");
-}else{
-    qrHint.textContent =
-        t("screenQrHintDefault");
+    qrImg.style.display = "block";
+
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+        qrHint.textContent = t("screenQrHintLocalhost");
+    } else {
+        qrHint.textContent = t("screenQrHintDefault");
+    }
 }
 
-    function showHudFiveMinutes(){
+function validateRoomOrWarn() {
+    if (ROOM) return true;
 
+    alert(t("openScreenWithRoom"));
+    debug("ROOM missing", {
+        href: location.href,
+        search: location.search,
+        room: ROOM
+    });
+
+    return false;
+}
+
+function showHudFiveMinutes() {
     hud.classList.remove("hidden");
 
-    setTimeout(()=>{
-    hud.classList.add("hidden");
-},300000);
-
+    setTimeout(() => {
+        hud.classList.add("hidden");
+    }, 300000);
 }
 
-    async function enterFullscreen(){
-
+async function enterFullscreen() {
     const el = document.documentElement;
 
-    if(el.requestFullscreen){
-    await el.requestFullscreen();
-}else if(el.webkitRequestFullscreen){
-    await el.webkitRequestFullscreen();
+    if (el.requestFullscreen) {
+        await el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+    }
 }
 
+function absUrl(u) {
+    try {
+        return new URL(u, location.origin).toString();
+    } catch {
+        return u;
+    }
 }
 
-    let conn;
-    let currentVideoUrl="";
-    let lastState=null;
+async function applyState(state) {
+    if (!state) return;
+    if (!ROOM) return;
 
-    function absUrl(u){
-    try{
-    return new URL(u,location.origin).toString();
-}catch{
-    return u;
-}
-}
-
-    async function applyState(state){
-
-    if(!state) return;
-
-    if((state.roomCode||"").toUpperCase()!==ROOM) return;
+    if ((state.roomCode || "").toUpperCase() !== ROOM) {
+        debug("Ignoring state from another room", {
+            expected: ROOM,
+            received: state.roomCode
+        });
+        return;
+    }
 
     lastState = state;
 
     const videoUrl = absUrl(state.videoUrl);
 
-    if(videoUrl && videoUrl!==currentVideoUrl){
+    if (videoUrl && videoUrl !== currentVideoUrl) {
+        currentVideoUrl = videoUrl;
+        video.src = videoUrl;
+        video.load();
+        debug("Video source updated", videoUrl);
+    }
 
-    currentVideoUrl = videoUrl;
+    if (state.isPlaying) {
+        try {
+            await video.play();
+        } catch (e) {
+            debug("Autoplay/play failed", e?.message || e);
+        }
+    } else {
+        video.pause();
+    }
 
-    video.src = videoUrl;
-    video.load();
+    const target = Math.max(0, state.positionMs || 0) / 1000;
 
+    if (video.readyState >= 1) {
+        if (Math.abs(video.currentTime - target) > 0.35) {
+            video.currentTime = target;
+            debug("Video seek applied", {
+                current: video.currentTime,
+                target
+            });
+        }
+    }
 }
 
-    if(state.isPlaying){
+async function joinAndPull() {
+    if (!ROOM) return;
 
-    try{
-    await video.play();
-}catch{}
+    await conn.invoke("JoinScreen", ROOM);
+    debug("Joined screen room", ROOM);
 
-}else{
+    const state = await conn.invoke("GetPlayerState", ROOM);
+    debug("Initial player state", state);
 
-    video.pause();
-
+    if (state) {
+        await applyState(state);
+    }
 }
 
-    const target = Math.max(0,state.positionMs||0)/1000;
-
-    if(video.readyState>=1){
-
-    if(Math.abs(video.currentTime-target)>0.35){
-    video.currentTime = target;
-}
-
-}
-
-}
-
-    async function joinAndPull(){
-
-    await conn.invoke("JoinScreen",ROOM);
-
-    const state = await conn.invoke("GetPlayerState",ROOM);
-
-    if(state){
-    await applyState(state);
-}
-
-}
-
-    async function start(){
+async function start() {
+    if (!validateRoomOrWarn()) return;
 
     showHudFiveMinutes();
 
-    const hubUrl = location.origin + "/hubs/rooms";
+    const hubUrl = `${location.origin}/hubs/rooms`;
 
     conn = new signalR.HubConnectionBuilder()
-    .withUrl(hubUrl)
-    .withAutomaticReconnect()
-    .build();
+        .withUrl(hubUrl)
+        .withAutomaticReconnect()
+        .build();
 
-    conn.on("playerStateChanged",(state)=>{
-    applyState(state);
-});
+    conn.on("playerStateChanged", (state) => {
+        debug("playerStateChanged", state);
+        applyState(state).catch(err => debug("applyState error", err?.message || err));
+    });
+
+    conn.onreconnecting((err) => {
+        debug("SignalR reconnecting", err?.message || err);
+    });
+
+    conn.onreconnected(() => {
+        debug("SignalR reconnected");
+    });
+
+    conn.onclose((err) => {
+        debug("SignalR closed", err?.message || err);
+    });
 
     await conn.start();
+    debug("SignalR connected", hubUrl);
 
     await joinAndPull();
-
 }
 
-    startBtn.onclick = async () => {
+setRoomText();
+configureQr();
 
-    await enterFullscreen();
+debug("Screen init", {
+    href: location.href,
+    search: location.search,
+    room: ROOM
+});
+
+startBtn.onclick = async () => {
+    try {
+        await enterFullscreen();
+    } catch (e) {
+        debug("Fullscreen failed", e?.message || e);
+    }
 
     startOverlay.classList.add("hidden");
 
-    start().catch(console.warn);
-
+    start().catch((err) => {
+        debug("start error", err?.message || err);
+        console.warn(err);
+    });
 };

@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>SilentSync Screen</title>
     <link rel="stylesheet" href="../css/screen.css">
-    
 </head>
 
 <body>
 
 <div id="startOverlay" class="start-overlay">
-    <button id="startBtn">Iniciar Telão</button>
+    <button id="startBtn" data-i18n="startScreen">Iniciar Telão</button>
 </div>
 
 <div class="stage">
@@ -19,10 +18,10 @@
     <video id="video" muted playsinline disablepictureinpicture></video>
 
     <div class="hud">
-        <div class="room" id="roomText">ROOM —</div>
+        <div class="room" id="roomText">ROOM</div>
 
         <div class="qr">
-            <img id="qrImg"/>
+            <img id="qrImg" data-i18n-alt="registerQrAlt" alt="QR Registro"/>
             <div class="hint" id="qrHint"></div>
         </div>
     </div>
@@ -30,8 +29,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-<script src="../js/i18n.js?v=4"></script>
-<script src="../js/screen.js?v=4"></script>
+<script src="../js/i18n.js?v=5"></script>
+<script src="../js/screen.js?v=5"></script>
 
 </body>
 </html>

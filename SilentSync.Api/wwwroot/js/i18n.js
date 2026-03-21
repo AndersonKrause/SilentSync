@@ -75,9 +75,10 @@
 
         // ===== SCREEN =====
         openScreenWithRoom: "Abra como /pages/screen.html?room=ABC123",
-        roomLabel: "ROOM",
+        roomLabel: "SALA",
         screenQrHintLocalhost: "Abra o telão pelo IP para o QR funcionar no celular",
         screenQrHintDefault: "Escaneie para entrar e ouvir o áudio no celular",
+        startScreen: "Iniciar Telão",
 
         // ===== MOBILE =====
         loggedInOk: "Logado",
@@ -112,7 +113,6 @@
         openScreen: "Abrir Telão",
         emptyRoomCode: "Room Code vazio",
         roomCode: "Room Code",
-        roomTitle: "Sala (Room)",
         roomCodePlaceholder: "6 Digits Code",
         screenLinkLabel: "Link Telão:",
         registerLinkLabel: "Link Registro (QR):",
@@ -154,7 +154,9 @@
         invalidSeek: "Seek inválido",
 
         adminTitle: "Administrador",
-        adminSubtitle: "Gerencie a sala, envie mídia e controle a reprodução."
+        adminSubtitle: "Gerencie a sala, envie mídia e controle a reprodução.",
+
+        audio: "Áudio sincronizado"
     },
 
     en: {
@@ -233,6 +235,7 @@
         roomLabel: "ROOM",
         screenQrHintLocalhost: "Open screen via IP for mobile QR",
         screenQrHintDefault: "Scan to join and hear audio",
+        startScreen: "Start Screen",
 
         loggedInOk: "Logged in",
         notLoggedRedirecting: "Not logged in. Redirecting to Register...",
@@ -265,7 +268,6 @@
         openScreen: "Open Screen",
         emptyRoomCode: "Empty room code",
         roomCode: "Room Code",
-        roomTitle: "Room",
         roomCodePlaceholder: "6 Digits Code",
         screenLinkLabel: "Screen Link:",
         registerLinkLabel: "Register Link (QR):",
@@ -307,7 +309,9 @@
         invalidSeek: "Invalid seek",
 
         adminTitle: "Admin",
-        adminSubtitle: "Manage the room, upload media and control playback."
+        adminSubtitle: "Manage the room, upload media and control playback.",
+
+        audio: "Synced audio"
     },
 
     de: {
@@ -383,10 +387,11 @@
         enterRoom: "Raum beitreten",
 
         openScreenWithRoom: "Öffnen mit /pages/screen.html?room=ABC123",
-        roomLabel: "ROOM",
+        roomLabel: "RAUM",
         screenQrHintLocalhost: "Bildschirm über IP öffnen, damit QR auf dem Handy funktioniert",
         screenQrHintDefault: "Scannen, um beizutreten und den Ton auf dem Handy zu hören",
-
+        startScreen: "Bildschirm starten",
+        
         loggedInOk: "Eingeloggt",
         notLoggedRedirecting: "Nicht eingeloggt. Weiterleitung zur Registrierung...",
         fillRoomCode: "Room Code eingeben",
@@ -418,7 +423,6 @@
         openScreen: "Bildschirm öffnen",
         emptyRoomCode: "Leerer Room Code",
         roomCode: "Room Code",
-        roomTitle: "Raum",
         roomCodePlaceholder: "6-stelliger Code",
         screenLinkLabel: "Bildschirm-Link:",
         registerLinkLabel: "Registrierungs-Link (QR):",
@@ -460,7 +464,9 @@
         invalidSeek: "Ungültiger Seek",
 
         adminTitle: "Admin",
-        adminSubtitle: "Verwalten Sie den Raum, laden Sie Medien hoch und steuern Sie die Wiedergabe."
+        adminSubtitle: "Verwalten Sie den Raum, laden Sie Medien hoch und steuern Sie die Wiedergabe.",
+        
+        audio: "Synchronisierter Ton"
     }
 };
 
