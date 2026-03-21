@@ -6,6 +6,16 @@ const LS = { token: "ss_token" };
 
 const norm = (s) => (s || "").trim();
 
+function tf(key, vars = {}) {
+    let text = t(key);
+
+    for (const [k, v] of Object.entries(vars)) {
+        text = text.replaceAll(`{${k}}`, v);
+    }
+
+    return text;
+}
+
 function log(...a) {
     if (!logEl) return;
     logEl.textContent += a
@@ -40,11 +50,9 @@ async function fetchMe() {
 
     return await res.json();
 }
- 
+
 async function gotoNext() {
-
     const me = await fetchMe();
-
     const role = (me?.role || "").toLowerCase();
 
     if (role === "admin" || role === "host") {
@@ -59,8 +67,8 @@ async function gotoNext() {
     location.href = url;
 }
 
-function setToken(t) {
-    if (t) localStorage.setItem(LS.token, t);
+function setToken(tk) {
+    if (tk) localStorage.setItem(LS.token, tk);
     else localStorage.removeItem(LS.token);
 }
 
@@ -76,6 +84,7 @@ async function api(path, { method = "GET", body = null } = {}) {
 
     const text = await res.text();
     let json = null;
+
     try {
         json = text ? JSON.parse(text) : null;
     } catch {}
@@ -127,11 +136,11 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
     const email = norm(document.getElementById("loginEmail")?.value).toLowerCase();
     const password = document.getElementById("loginPassword")?.value || "";
 
-    if (!email) return alert("Preencha o email");
-    if (!password) return alert("Preencha a senha");
+    if (!email) return alert(t("fillEmail"));
+    if (!password) return alert(t("fillPassword"));
 
-    if (loginInfo) loginInfo.textContent = "Entrando...";
-    setStatus("entrando...");
+    if (loginInfo) loginInfo.textContent = t("statusLoggingIn");
+    setStatus(t("statusLoggingIn"));
 
     try {
         const r = await api("/api/auth/login", {
@@ -139,16 +148,23 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
             body: { email, password }
         });
 
-        if (!r?.token) throw new Error("Resposta sem token");
+        if (!r?.token) throw new Error(t("noToken"));
 
         setToken(r.token);
-        if (loginInfo) loginInfo.innerHTML = "<span class='ok'>Login realizado ✅</span>";
+
+        if (loginInfo) {
+            loginInfo.innerHTML = `<span class="ok">${t("loginSuccess")}</span>`;
+        }
+
         gotoNext();
     } catch (e) {
-        if (loginInfo) loginInfo.innerHTML = "<span class='err'>Falhou: email ou senha inválidos.</span>";
+        if (loginInfo) {
+            loginInfo.innerHTML = `<span class="err">${t("loginFailed")}</span>`;
+        }
+
         log("login ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
@@ -167,12 +183,12 @@ document.getElementById("createStartBtn")?.addEventListener("click", async () =>
     const pw1 = document.getElementById("createPw1")?.value || "";
     const pw2 = document.getElementById("createPw2")?.value || "";
 
-    if (!email) return alert("Preencha o email");
-    if (pw1.length < 6) return alert("Senha mínima: 6 caracteres");
-    if (pw1 !== pw2) return alert("As senhas não coincidem");
+    if (!email) return alert(t("fillEmail"));
+    if (pw1.length < 6) return alert(t("minPassword"));
+    if (pw1 !== pw2) return alert(t("passwordsMismatch"));
 
-    if (createInfo) createInfo.textContent = "Enviando código...";
-    setStatus("enviando...");
+    if (createInfo) createInfo.textContent = t("createSendingCode");
+    setStatus(t("statusSending"));
 
     try {
         const r = await api("/api/auth/register-start", {
@@ -181,27 +197,38 @@ document.getElementById("createStartBtn")?.addEventListener("click", async () =>
         });
 
         log("register-start:", r);
-        if (createInfo) createInfo.innerHTML = "<span class='ok'>Código enviado ✅</span>";
+
+        if (createInfo) {
+            createInfo.innerHTML = `<span class="ok">${t("createCodeSent")}</span>`;
+        }
+
         showCreateStep2(email);
     } catch (e) {
         const msg = e.message || "";
+
         if (msg.toLowerCase().includes("already")) {
-            if (createInfo) createInfo.innerHTML = "<span class='warn'>Este email já tem conta. Use Entrar.</span>";
+            if (createInfo) {
+                createInfo.innerHTML = `<span class="warn">${t("createAccountExists")}</span>`;
+            }
         } else {
-            if (createInfo) createInfo.innerHTML = `<span class='err'>Falhou: ${msg}</span>`;
+            if (createInfo) {
+                createInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: msg })}</span>`;
+            }
         }
+
         log("register-start ERROR:", msg);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
 document.getElementById("createResendBtn")?.addEventListener("click", async () => {
     const email = norm(document.getElementById("createEmail")?.value).toLowerCase();
-    if (!email) return alert("Preencha o email");
 
-    if (createCodeInfo) createCodeInfo.textContent = "Reenviando...";
-    setStatus("enviando...");
+    if (!email) return alert(t("fillEmail"));
+
+    if (createCodeInfo) createCodeInfo.textContent = t("createResending");
+    setStatus(t("statusSending"));
 
     try {
         await api("/api/auth/request-code", {
@@ -209,12 +236,17 @@ document.getElementById("createResendBtn")?.addEventListener("click", async () =
             body: { email }
         });
 
-        if (createCodeInfo) createCodeInfo.innerHTML = "<span class='ok'>Código reenviado ✅</span>";
+        if (createCodeInfo) {
+            createCodeInfo.innerHTML = `<span class="ok">${t("createCodeResent")}</span>`;
+        }
     } catch (e) {
-        if (createCodeInfo) createCodeInfo.innerHTML = `<span class='err'>Falhou: ${e.message || e}</span>`;
+        if (createCodeInfo) {
+            createCodeInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: e.message || String(e) })}</span>`;
+        }
+
         log("create resend ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
@@ -222,11 +254,11 @@ document.getElementById("createCompleteBtn")?.addEventListener("click", async ()
     const email = norm(document.getElementById("createEmail")?.value).toLowerCase();
     const code = norm(document.getElementById("createCode")?.value);
 
-    if (!email) return alert("Preencha o email");
-    if (!code) return alert("Preencha o código");
+    if (!email) return alert(t("fillEmail"));
+    if (!code) return alert(t("fillCode"));
 
-    if (createCodeInfo) createCodeInfo.textContent = "Confirmando...";
-    setStatus("confirmando...");
+    if (createCodeInfo) createCodeInfo.textContent = t("createConfirming");
+    setStatus(t("statusConfirming"));
 
     try {
         const r = await api("/api/auth/register-complete", {
@@ -234,16 +266,23 @@ document.getElementById("createCompleteBtn")?.addEventListener("click", async ()
             body: { email, code }
         });
 
-        if (!r?.token) throw new Error("Resposta sem token");
+        if (!r?.token) throw new Error(t("noToken"));
 
         setToken(r.token);
-        if (createCodeInfo) createCodeInfo.innerHTML = "<span class='ok'>Conta criada ✅</span>";
+
+        if (createCodeInfo) {
+            createCodeInfo.innerHTML = `<span class="ok">${t("createAccountCreated")}</span>`;
+        }
+
         gotoNext();
     } catch (e) {
-        if (createCodeInfo) createCodeInfo.innerHTML = `<span class='err'>Falhou: ${e.message || e}</span>`;
+        if (createCodeInfo) {
+            createCodeInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: e.message || String(e) })}</span>`;
+        }
+
         log("register-complete ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
@@ -259,10 +298,11 @@ function showForgotStep2(email) {
 
 document.getElementById("forgotSendBtn")?.addEventListener("click", async () => {
     const email = norm(document.getElementById("forgotEmail")?.value).toLowerCase();
-    if (!email) return alert("Preencha o email");
 
-    if (forgotInfo) forgotInfo.textContent = "Enviando código...";
-    setStatus("enviando...");
+    if (!email) return alert(t("fillEmail"));
+
+    if (forgotInfo) forgotInfo.textContent = t("forgotSendingCode");
+    setStatus(t("statusSending"));
 
     try {
         const r = await api("/api/auth/forgot-password", {
@@ -271,22 +311,30 @@ document.getElementById("forgotSendBtn")?.addEventListener("click", async () => 
         });
 
         log("forgot-password:", r);
-        if (forgotInfo) forgotInfo.innerHTML = "<span class='ok'>Código enviado ✅</span>";
+
+        if (forgotInfo) {
+            forgotInfo.innerHTML = `<span class="ok">${t("forgotCodeSent")}</span>`;
+        }
+
         showForgotStep2(email);
     } catch (e) {
-        if (forgotInfo) forgotInfo.innerHTML = `<span class='err'>Falhou: ${e.message || e}</span>`;
+        if (forgotInfo) {
+            forgotInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: e.message || String(e) })}</span>`;
+        }
+
         log("forgot-password ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
 document.getElementById("forgotResendBtn")?.addEventListener("click", async () => {
     const email = norm(document.getElementById("forgotEmail")?.value).toLowerCase();
-    if (!email) return alert("Preencha o email");
 
-    if (forgotCodeInfo) forgotCodeInfo.textContent = "Reenviando...";
-    setStatus("enviando...");
+    if (!email) return alert(t("fillEmail"));
+
+    if (forgotCodeInfo) forgotCodeInfo.textContent = t("forgotResending");
+    setStatus(t("statusSending"));
 
     try {
         await api("/api/auth/request-code", {
@@ -294,12 +342,17 @@ document.getElementById("forgotResendBtn")?.addEventListener("click", async () =
             body: { email }
         });
 
-        if (forgotCodeInfo) forgotCodeInfo.innerHTML = "<span class='ok'>Código reenviado ✅</span>";
+        if (forgotCodeInfo) {
+            forgotCodeInfo.innerHTML = `<span class="ok">${t("forgotCodeResent")}</span>`;
+        }
     } catch (e) {
-        if (forgotCodeInfo) forgotCodeInfo.innerHTML = `<span class='err'>Falhou: ${e.message || e}</span>`;
+        if (forgotCodeInfo) {
+            forgotCodeInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: e.message || String(e) })}</span>`;
+        }
+
         log("forgot resend ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
@@ -309,13 +362,13 @@ document.getElementById("forgotResetBtn")?.addEventListener("click", async () =>
     const pw1 = document.getElementById("forgotPw1")?.value || "";
     const pw2 = document.getElementById("forgotPw2")?.value || "";
 
-    if (!email) return alert("Preencha o email");
-    if (!code) return alert("Preencha o código");
-    if (pw1.length < 6) return alert("Senha mínima: 6 caracteres");
-    if (pw1 !== pw2) return alert("As senhas não coincidem");
+    if (!email) return alert(t("fillEmail"));
+    if (!code) return alert(t("fillCode"));
+    if (pw1.length < 6) return alert(t("minPassword"));
+    if (pw1 !== pw2) return alert(t("passwordsMismatch"));
 
-    if (forgotCodeInfo) forgotCodeInfo.textContent = "Salvando...";
-    setStatus("salvando...");
+    if (forgotCodeInfo) forgotCodeInfo.textContent = t("forgotSaving");
+    setStatus(t("statusSaving"));
 
     try {
         const r = await api("/api/auth/reset-password", {
@@ -323,19 +376,33 @@ document.getElementById("forgotResetBtn")?.addEventListener("click", async () =>
             body: { email, code, newPassword: pw1 }
         });
 
-        if (!r?.token) throw new Error("Resposta sem token");
+        if (!r?.token) throw new Error(t("noToken"));
 
         setToken(r.token);
-        if (forgotCodeInfo) forgotCodeInfo.innerHTML = "<span class='ok'>Senha atualizada ✅</span>";
+
+        if (forgotCodeInfo) {
+            forgotCodeInfo.innerHTML = `<span class="ok">${t("forgotPasswordUpdated")}</span>`;
+        }
+
         gotoNext();
     } catch (e) {
-        if (forgotCodeInfo) forgotCodeInfo.innerHTML = `<span class='err'>Falhou: ${e.message || e}</span>`;
+        if (forgotCodeInfo) {
+            forgotCodeInfo.innerHTML = `<span class="err">${tf("failedWithReason", { reason: e.message || String(e) })}</span>`;
+        }
+
         log("reset-password ERROR:", e.message || e);
     } finally {
-        setStatus("pronto");
+        setStatus(t("statusReady"));
     }
 });
 
 // default
-showView("login");
-setStatus("pronto");
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof t !== "function") {
+        console.error("i18n not loaded!");
+        return;
+    }
+    
+    showView("login");
+    setStatus(t("statusReady"));
+});
