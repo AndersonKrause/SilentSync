@@ -76,7 +76,13 @@ const translations = {
         sendCode: "Enviar código",
         confirmCode: "Confirmar código",
         resetPassword: "Redefinir senha",
-        enterRoom: "Entrar na sala"
+        enterRoom: "Entrar na sala",
+        
+        //==== Screen ====
+        openScreenWithRoom: "Abra como ",
+        screenQrHintLocalhost: "Abra o telão pelo IP para o QR funcionar no celular",
+        screenQrHintDefault: "Escaneie para entrar e ouvir o áudio no celular"
+        
     },
 
     en: {
@@ -150,7 +156,11 @@ const translations = {
         sendCode: "Send code",
         confirmCode: "Confirm code",
         resetPassword: "Reset password",
-        enterRoom: "Join room"
+        enterRoom: "Join room",
+
+        openScreenWithRoom: "Open as",
+        screenQrHintLocalhost: "Open screen via IP for mobile QR",
+        screenQrHintDefault: "Scan to join and hear audio"
     },
 
     de: {
@@ -224,7 +234,12 @@ const translations = {
         sendCode: "Code senden",
         confirmCode: "Code bestätigen",
         resetPassword: "Passwort zurücksetzen",
-        enterRoom: "Raum beitreten"
+        enterRoom: "Raum beitreten",
+
+        openScreenWithRoom: "Öffnen mit",
+        roomLabel: "ROOM",
+        screenQrHintLocalhost: "Über IP öffnen für QR",
+        screenQrHintDefault: "Scannen, um beizutreten und den Ton zu hören"
     }
 };
 
