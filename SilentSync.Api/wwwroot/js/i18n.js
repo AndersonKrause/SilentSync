@@ -154,7 +154,10 @@
         invalidSeek: "Seek inválido",
 
         adminTitle: "Administrador",
-        adminSubtitle: "Gerencie a sala, envie mídia e controle a reprodução."
+        adminSubtitle: "Gerencie a sala, envie mídia e controle a reprodução.",
+
+        audio: "Áudio sincronizado",
+        room: "Sala"
     },
 
     en: {
@@ -307,7 +310,10 @@
         invalidSeek: "Invalid seek",
 
         adminTitle: "Admin",
-        adminSubtitle: "Manage the room, upload media and control playback."
+        adminSubtitle: "Manage the room, upload media and control playback.",
+
+        audio: "Synced audio",
+        room: "Room"
     },
 
     de: {
@@ -460,7 +466,10 @@
         invalidSeek: "Ungültiger Seek",
 
         adminTitle: "Admin",
-        adminSubtitle: "Verwalten Sie den Raum, laden Sie Medien hoch und steuern Sie die Wiedergabe."
+        adminSubtitle: "Verwalten Sie den Raum, laden Sie Medien hoch und steuern Sie die Wiedergabe.",
+        
+        audio: "Synchronisierter Ton",
+        room: "Raum"
     }
 };
 
