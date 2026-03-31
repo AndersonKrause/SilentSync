@@ -11,9 +11,9 @@ using SilentSync.Api.Services.Auth;
 using SilentSync.Api.Services.Media;
 using SilentSync.Api.Services.Rooms;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 builder.Services.AddControllers();
 
@@ -23,29 +23,19 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "SilentSync.Api", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In = ParameterLocation.Header,
         Description = "Type: Bearer {your JWT token}"
     });
 
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
 });
 
@@ -98,15 +88,14 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 
 builder.Services.AddAuthorization();
 
-// Upload limit is 1GB = 1024L
-
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 1024L * 1024 * 1024; // 1 GB
+    options.MultipartBodyLengthLimit = 1024L * 1024 * 1024;
 });
+
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024; // 1 GB
+    options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024;
 });
 
 var app = builder.Build();
@@ -118,7 +107,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// (Opcional) se estiver testando via celular no HTTP, pode comentar o redirect em DEV
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -132,8 +121,8 @@ Directory.CreateDirectory(mediaRoot);
 
 var provider = new FileExtensionContentTypeProvider();
 provider.Mappings[".m3u8"] = "application/vnd.apple.mpegurl";
-provider.Mappings[".aac"]  = "audio/aac";
-provider.Mappings[".ts"]   = "video/mp2t";
+provider.Mappings[".aac"] = "audio/aac";
+provider.Mappings[".ts"] = "video/mp2t";
 
 app.UseStaticFiles(new StaticFileOptions
 {
