@@ -2,7 +2,7 @@
 
 const LS = { token: "ss_token" };
 
-const logEl = document.getElementById("log");
+//const logEl = document.getElementById("log");
 const statusEl = document.getElementById("status");
 const video = document.getElementById("video");
 
@@ -19,12 +19,19 @@ const qrReg = document.getElementById("qrReg");
 const logoutBtn = document.getElementById("logoutBtn");
 const userInfo = document.getElementById("userInfo");
 
+const refreshRoomsBtn = document.getElementById("refreshRoomsBtn");
+const roomsList = document.getElementById("roomsList");
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const norm = (s) => (s || "").trim().toUpperCase();
 
 let conn = null;
 let lastSent = 0;
 let pending = false;
+
+function log(...a) {
+    console.log(...a);
+}
 
 function getToken() {
     return localStorage.getItem(LS.token) || "";
@@ -44,9 +51,7 @@ async function fetchMe() {
     if (!token) return null;
 
     const res = await fetch("/api/auth/me", {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
+        headers: { "Authorization": "Bearer " + token }
     });
 
     if (res.status === 401) {
@@ -59,36 +64,6 @@ async function fetchMe() {
     }
 
     return await res.json();
-}
-
-(async function checkAuth() {
-    const token = getToken();
-    if (!token) {
-        redirectToAdminLogin();
-        return;
-    }
-
-    try {
-        const me = await fetchMe();
-        if (!me) return;
-
-        const role = (me.role || "").toLowerCase();
-        userInfo.textContent = tf("userInfoText", { email: me.email, role });
-
-        if (role !== "host" && role !== "admin") {
-            alert(t("adminNoPermission"));
-            location.href = "/pages/mobile.html";
-        }
-    } catch (e) {
-        console.error(e);
-        logout();
-    }
-})();
-
-function log(...a) {
-    const line = a.map(x => typeof x === "string" ? x : JSON.stringify(x, null, 2)).join(" ");
-    logEl.textContent += line + "\n";
-    logEl.scrollTop = logEl.scrollHeight;
 }
 
 function setStatus(s) {
@@ -105,6 +80,7 @@ function buildLinks(roomCode) {
 
 function renderLinks(roomCode) {
     const rc = norm(roomCode);
+
     if (!rc) {
         screenLinkText.textContent = t("emptyValue");
         regLinkText.textContent = t("emptyValue");
@@ -124,15 +100,179 @@ function renderLinks(roomCode) {
     copyRegBtn.disabled = false;
 }
 
+// ================= ROOMS LIST =================
+
+async function loadRooms() {
+    if (!roomsList) return;
+
+    roomsList.innerHTML = `<p>${t("loadingRooms")}</p>`;
+
+    const token = getToken();
+
+    const res = await fetch("/api/rooms", {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    if (res.status === 401) {
+        alert(t("sessionExpired"));
+        redirectToAdminLogin();
+        return;
+    }
+
+    if (res.status === 403) {
+        roomsList.innerHTML = `<span class="err">${t("noPermissionListRooms")}</span>`;
+        return;
+    }
+
+    if (!res.ok) {
+        roomsList.innerHTML = `<span class="err">${t("failedLoadRooms")}</span>`;
+        return;
+    }
+
+    const rooms = await res.json();
+
+    if (!rooms.length) {
+        roomsList.innerHTML = `<p>${t("noRoomsFound")}</p>`;
+        return;
+    }
+
+    roomsList.innerHTML = rooms.map(room => {
+        const id = room.id || room.Id;
+        const code = room.code || room.Code;
+        const membersCount = room.membersCount ?? room.MembersCount ?? 0;
+
+        return `
+            <div class="room-row" data-id="${id}">
+                <div class="room-code">${code}</div>
+                <td class="room-members">${tf("membersCount", { count: membersCount })}</td>
+        
+                <button class="room-action room-select" data-action="select" data-code="${code}">
+                    ${t("selectRoom")}
+                </button>
+        
+                <button class="room-action room-open" data-action="open" data-code="${code}">
+                    ${t("openScreenRoom")}
+                </button>
+        
+                <button class="room-action room-delete" data-action="delete" data-id="${id}" data-code="${code}">
+                    ${t("deleteRoom")}
+                </button>
+            </div>
+        `;
+    }).join("");
+}
+
+async function deleteRoom(id, code) {
+    if (!confirm(tf("confirmDeleteRoom", { code }))) return;
+
+    const token = getToken();
+
+    const res = await fetch(`/api/rooms/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    if (res.status === 204) {
+        await loadRooms();
+
+        const currentRoom = norm(document.getElementById("roomCode").value);
+        if (currentRoom === norm(code)) {
+            document.getElementById("roomCode").value = "";
+            renderLinks("");
+        }
+
+        return;
+    }
+
+    if (res.status === 401) {
+        alert(t("sessionExpired"));
+        redirectToAdminLogin();
+        return;
+    }
+
+    if (res.status === 403) {
+        alert(t("noPermissionDeleteRoom"));
+        return;
+    }
+
+    alert(t("failedDeleteRoom"));
+}
+
+refreshRoomsBtn?.addEventListener("click", loadRooms);
+
+roomsList?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const code = norm(btn.dataset.code);
+
+    if (action === "select") {
+        document.getElementById("roomCode").value = code;
+        renderLinks(code);
+    }
+
+    if (action === "open") {
+        const { screenUrl } = buildLinks(code);
+        window.open(screenUrl, "_blank", "noopener,noreferrer");
+    }
+
+    if (action === "delete") {
+        await deleteRoom(btn.dataset.id, code);
+    }
+});
+
+// ================= AUTH =================
+
+(async function checkAuth() {
+    const token = getToken();
+
+    if (!token) {
+        redirectToAdminLogin();
+        return;
+    }
+
+    try {
+        const me = await fetchMe();
+        if (!me) return;
+
+        const role = (me.role || "").toLowerCase();
+        userInfo.textContent = tf("userInfoText", { email: me.email, role });
+
+        if (role !== "host" && role !== "admin") {
+            alert(t("adminNoPermission"));
+            location.href = "/pages/mobile.html";
+            return;
+        }
+
+        await loadRooms();
+    } catch (e) {
+        console.error(e);
+        logout();
+    }
+})();
+
+// ================= INIT ROOM =================
+
 (function initRoomFromQuery() {
     const qsRoom = new URLSearchParams(location.search).get("room");
+
     if (qsRoom) {
         document.getElementById("roomCode").value = norm(qsRoom);
     }
+
     renderLinks(document.getElementById("roomCode").value);
 })();
 
-document.getElementById("roomCode").addEventListener("input", (e) => renderLinks(e.target.value));
+document.getElementById("roomCode").addEventListener("input", (e) => {
+    renderLinks(e.target.value);
+});
+
+// ================= CREATE ROOM =================
 
 createRoomBtn.onclick = async () => {
     createRoomBtn.disabled = true;
@@ -140,6 +280,7 @@ createRoomBtn.onclick = async () => {
 
     try {
         const token = getToken();
+
         if (!token) {
             alert(t("loginBeforeCreateRoom"));
             redirectToAdminLogin();
@@ -166,18 +307,21 @@ createRoomBtn.onclick = async () => {
         }
 
         const json = await res.json().catch(() => null);
+
         if (!res.ok) {
             throw new Error((json && (json.message || json.title)) || ("HTTP " + res.status));
         }
 
         const code = json?.code || json?.Code || json?.roomCode || json?.room?.code;
+
         if (!code) throw new Error(t("responseWithoutCode"));
 
         const rc = norm(code);
+
         document.getElementById("roomCode").value = rc;
         renderLinks(rc);
 
-        log("room created:", json);
+        await loadRooms();
 
         const { screenUrl } = buildLinks(rc);
         window.open(screenUrl, "_blank", "noopener,noreferrer");
@@ -190,8 +334,11 @@ createRoomBtn.onclick = async () => {
     }
 };
 
+// ================= LINKS =================
+
 openScreenBtn.onclick = () => {
     const rc = norm(document.getElementById("roomCode").value);
+
     if (!rc) {
         alert(t("emptyRoomCode"));
         return;
@@ -203,12 +350,14 @@ openScreenBtn.onclick = () => {
 
 copyRegBtn.onclick = async () => {
     const rc = norm(document.getElementById("roomCode").value);
+
     if (!rc) {
         alert(t("emptyRoomCode"));
         return;
     }
 
     const { regUrl } = buildLinks(rc);
+
     try {
         await navigator.clipboard.writeText(regUrl);
         copyRegBtn.textContent = `${t("copied")} ✅`;
@@ -217,6 +366,8 @@ copyRegBtn.onclick = async () => {
         prompt(t("copyRegisterLinkPrompt"), regUrl);
     }
 };
+
+// ================= UPLOAD =================
 
 document.getElementById("file").addEventListener("change", (ev) => {
     const f = ev.target.files?.[0];
@@ -228,6 +379,7 @@ document.getElementById("file").addEventListener("change", (ev) => {
 
 uploadBtn.onclick = async () => {
     const f = document.getElementById("file").files?.[0];
+
     if (!f) {
         alert(t("selectVideoFirst"));
         return;
@@ -262,11 +414,10 @@ uploadBtn.onclick = async () => {
                     ));
                 }
             };
+
             xhr.onerror = () => reject(new Error(t("networkError")));
             xhr.send(form);
         });
-
-        log("upload result:", result);
 
         const a = result?.audioPath || result?.audioUrl;
         const v = result?.videoPath || result?.videoUrl;
@@ -284,6 +435,8 @@ uploadBtn.onclick = async () => {
         log("upload ERROR:", e?.message || e);
     }
 };
+
+// ================= SIGNALR PLAYER CONTROL =================
 
 function buildPayload() {
     const roomCode = norm(document.getElementById("roomCode").value);
@@ -430,6 +583,7 @@ document.getElementById("pauseBtn").onclick = async () => {
 
 document.getElementById("seekBtn").onclick = async () => {
     const v = parseInt(document.getElementById("seekMs").value, 10);
+
     if (!Number.isFinite(v)) {
         alert(t("invalidSeek"));
         return;

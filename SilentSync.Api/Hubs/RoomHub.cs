@@ -121,7 +121,7 @@ public class RoomHub : Hub
 
         _stateByRoom[roomCode] = normalized;
 
-        await Clients.Group(Group(roomCode))
+        await Clients.OthersInGroup(Group(roomCode))
             .SendAsync("playerStateChanged", normalized);
 
         return normalized;

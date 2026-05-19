@@ -10,7 +10,8 @@ body {
     color: #111827;
 }
 
-/* layout */
+/* ================= LAYOUT ================= */
+
 .admin-shell {
     padding: 24px;
     display: flex;
@@ -22,9 +23,16 @@ body {
     max-width: 1100px;
 }
 
-/* header */
+/* ================= HEADER ================= */
+
 .topline {
     margin-bottom: 20px;
+}
+
+.brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .brand {
@@ -38,15 +46,18 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    gap: 20px;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
-/* cards */
+/* ================= CARDS ================= */
+
 .card {
     background: #fff;
     border-radius: 18px;
@@ -56,17 +67,34 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
 }
 
-/* grid */
+/* ================= GRID ================= */
+
 .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
 
-/* buttons */
+/* ================= BUTTONS ================= */
+
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
 .primary-btn {
     background: #111827;
     color: #fff;
+}
+
+.primary-btn:hover {
+    background: #000;
 }
 
 .secondary-btn {
@@ -74,39 +102,59 @@ body {
     color: #3730a3;
 }
 
-.primary-btn, .secondary-btn {
-    border: none;
-    border-radius: 12px;
-    padding: 12px;
-    font-weight: 700;
-    cursor: pointer;
+.secondary-btn:hover {
+    background: #dfe5ff;
 }
 
-/* inputs */
+.danger-btn {
+    background: #dc2626;
+    color: #fff;
+}
+
+.danger-btn:hover {
+    background: #b91c1c;
+}
+
+/* ================= INPUTS ================= */
+
 input {
     width: 100%;
     padding: 12px;
     border-radius: 12px;
     border: 1px solid #d1d5db;
+    margin-top: 6px;
 }
 
-/* misc */
+/* ================= ACTIONS ================= */
+
 .actions {
     margin-top: 10px;
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .actions.two button {
     flex: 1;
 }
 
+/* ================= QR ================= */
+
 .qr-row {
     display: flex;
     gap: 10px;
     align-items: center;
     margin-top: 10px;
+    flex-wrap: wrap;
 }
+
+#qrReg {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+}
+
+/* ================= TEXT ================= */
 
 .small {
     font-size: 13px;
@@ -127,9 +175,194 @@ input {
     font-size: 12px;
 }
 
-/* responsive */
-@media (max-width: 768px) {
+/* ================= VIDEO ================= */
+
+video {
+    width: 100%;
+    border-radius: 16px;
+    margin-top: 20px;
+    background: #000;
+}
+
+/* ================= LOG ================= */
+
+pre#log {
+    margin-top: 20px;
+    background: #111827;
+    color: #f9fafb;
+    padding: 16px;
+    border-radius: 16px;
+    overflow: auto;
+    max-height: 300px;
+}
+
+/* ================= ROOM PANEL ================= */
+
+.rooms-box {
+    height: 235px;
+    max-height: 235px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+
+    padding: 8px;
+    margin-top: 12px;
+
+    background: #fafafa;
+}
+
+/* scrollbar */
+
+.rooms-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.rooms-box::-webkit-scrollbar-thumb {
+    background: #c7d2fe;
+    border-radius: 999px;
+}
+
+.rooms-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* rows */
+
+.room-row {
+    display: grid;
+
+    grid-template-columns:
+        90px
+        85px
+        95px
+        100px
+        75px;
+
+    gap: 8px;
+
+    align-items: center;
+
+    width: 100%;
+
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+
+    padding: 0;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.room-row:last-child {
+    border-bottom: none;
+}
+
+/* texts */
+
+.room-code {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.room-members {
+    white-space: nowrap;
+    font-size: 14px;
+    color: #374151;
+}
+
+/* buttons */
+
+.room-row button {
+    width: 100%;
+
+    height: 34px;
+    min-height: 34px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    white-space: nowrap;
+
+    border-radius: 10px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 900px) {
+
     .grid {
         grid-template-columns: 1fr;
     }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+#roomsList {
+    height: 235px !important;
+    max-height: 235px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    margin-top: 12px !important;
+    padding: 8px !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 14px !important;
+    background: #fafafa !important;
+}
+
+#roomsList .room-row {
+    display: grid !important;
+    grid-template-columns: 100px 95px 105px 115px 80px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+}
+
+#roomsList .room-code {
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    line-height: 34px !important;
+}
+
+#roomsList .room-members {
+    white-space: nowrap !important;
+    font-size: 14px !important;
+    line-height: 34px !important;
+    color: #374151 !important;
+}
+
+#roomsList .room-action {
+    all: unset !important;
+    box-sizing: border-box !important;
+    height: 34px !important;
+    width: 100% !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+#roomsList .room-select,
+#roomsList .room-open {
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+}
+
+#roomsList .room-delete {
+    background: #dc2626 !important;
+    color: white !important;
 }
