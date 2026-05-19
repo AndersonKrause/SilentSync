@@ -156,7 +156,21 @@
         adminTitle: "Administrador",
         adminSubtitle: "Gerencie a sala, envie mídia e controle a reprodução.",
 
-        audio: "Áudio sincronizado"
+        audio: "Áudio sincronizado",
+        
+        roomsExisting: "Rooms existentes",
+        refreshRooms: "Atualizar lista",
+        loadingRooms: "Carregando rooms...",
+        noRoomsFound: "Nenhuma room encontrada.",
+        membersCount: "{count} membros",
+        selectRoom: "Selecionar",
+        openScreenRoom: "Abrir Telão",
+        deleteRoom: "Excluir",
+        confirmDeleteRoom: "Excluir a room {code}?",
+        noPermissionListRooms: "Você não tem permissão para listar rooms.",
+        failedLoadRooms: "Falha ao carregar rooms.",
+        noPermissionDeleteRoom: "Você não tem permissão para excluir esta room.",
+        failedDeleteRoom: "Falha ao excluir room."
     },
 
     en: {
@@ -311,7 +325,21 @@
         adminTitle: "Admin",
         adminSubtitle: "Manage the room, upload media and control playback.",
 
-        audio: "Synced audio"
+        audio: "Synced audio",
+
+        roomsExisting: "Existing rooms",
+        refreshRooms: "Refresh list",
+        loadingRooms: "Loading rooms...",
+        noRoomsFound: "No rooms found.",
+        membersCount: "{count} members",
+        selectRoom: "Select",
+        openScreenRoom: "Open Screen",
+        deleteRoom: "Delete",
+        confirmDeleteRoom: "Delete room {code}?",
+        noPermissionListRooms: "You do not have permission to list rooms.",
+        failedLoadRooms: "Failed to load rooms.",
+        noPermissionDeleteRoom: "You do not have permission to delete this room.",
+        failedDeleteRoom: "Failed to delete room."
     },
 
     de: {
@@ -466,7 +494,21 @@
         adminTitle: "Admin",
         adminSubtitle: "Verwalten Sie den Raum, laden Sie Medien hoch und steuern Sie die Wiedergabe.",
         
-        audio: "Synchronisierter Ton"
+        audio: "Synchronisierter Ton",
+
+        roomsExisting: "Vorhandene Räume",
+        refreshRooms: "Liste aktualisieren",
+        loadingRooms: "Räume werden geladen...",
+        noRoomsFound: "Keine Räume gefunden.",
+        membersCount: "{count} Mitglieder",
+        selectRoom: "Auswählen",
+        openScreenRoom: "Bildschirm öffnen",
+        deleteRoom: "Löschen",
+        confirmDeleteRoom: "Raum {code} löschen?",
+        noPermissionListRooms: "Sie haben keine Berechtigung, Räume aufzulisten.",
+        failedLoadRooms: "Räume konnten nicht geladen werden.",
+        noPermissionDeleteRoom: "Sie haben keine Berechtigung, diesen Raum zu löschen.",
+        failedDeleteRoom: "Raum konnte nicht gelöscht werden."
     }
 };
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>SilentSync - Admin</title>
-    <link rel="stylesheet" href="../css/admin.css" />
+    <link rel="stylesheet" href="../css/admin.css?v=50" />
 </head>
 <body>
 
@@ -58,6 +58,12 @@
             </div>
 
             <div class="small muted" data-i18n="publicOriginHint"></div>
+        </section>
+
+        <section class="card">
+            <h2 data-i18n="roomsExisting">Existing rooms</h2>
+            <button id="refreshRoomsBtn" data-i18n="refreshRooms">Atualizar lista</button>
+            <div id="roomsList" class="rooms-box"></div>
         </section>
 
         <!-- GRID -->
@@ -118,8 +124,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-<script src="../js/i18n.js?v=5"></script>
-<script src="../js/admin.js?v=5"></script>
+<script src="../js/i18n.js?v=6"></script>
+<script src="../js/admin.js?v=9"></script>
 
 </body>
 </html>
