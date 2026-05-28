@@ -81,8 +81,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 //builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();
-builder.Services.AddTransient<IEmailSender, GmailEmailSender>();
-//builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
+//builder.Services.AddTransient<IEmailSender, GmailEmailSender>();
+builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ILoginCodeService, LoginCodeService>();
 builder.Services.AddScoped<IMediaService, MediaService>();

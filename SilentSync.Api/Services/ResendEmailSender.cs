@@ -28,7 +28,7 @@ public class ResendEmailSender : IEmailSender
 
         var body = new
         {
-            from = "SilentSync <onboarding@resend.dev>",
+            from = "SilentSync <noreply@silentsync.uk>",
             to = new[] { toEmail },
             subject,
             text
