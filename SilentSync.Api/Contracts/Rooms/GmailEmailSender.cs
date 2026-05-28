@@ -29,7 +29,7 @@ public class GmailEmailSender : IEmailSender
             EnableSsl = true
         };
 
-        var message = new MailMessage(user, toEmail, subject, text);
+        using var message = new MailMessage(user, toEmail, subject, text);
         await client.SendMailAsync(message);
     }
 }
