@@ -1,0 +1,155 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SilentSync</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, Arial, sans-serif;
+            background: linear-gradient(180deg, #f8fafc, #eef2ff);
+            color: #111827;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px;
+        }
+
+        .card {
+            max-width: 980px;
+            background: white;
+            border-radius: 28px;
+            padding: 42px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, .10);
+            border: 1px solid #e5e7eb;
+        }
+
+        .brand {
+            font-size: 42px;
+            font-weight: 900;
+            color: #4f46e5;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 44px;
+            line-height: 1.05;
+            margin: 0 0 18px;
+        }
+
+        p {
+            color: #4b5563;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .actions {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 28px 0;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .btn {
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 800;
+            display: inline-block;
+        }
+
+        .primary {
+            background: #111827;
+            color: white;
+        }
+
+        .secondary {
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 30px;
+        }
+
+        .step {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        .step strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .footer {
+            margin-top: 34px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        @media (max-width: 760px) {
+            h1 { font-size: 34px; }
+            .grid { grid-template-columns: 1fr; }
+            .card { padding: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<main class="hero">
+    <section class="card">
+        <div class="brand">SilentSync</div>
+
+        <h1>Synchronized audio for shared screen experiences.</h1>
+
+        <p>
+            SilentSync allows multiple mobile devices to play synchronized audio
+            while a central screen displays video content. It is designed for
+            silent cinema, exhibitions, events, conferences and educational spaces.
+        </p>
+
+        <div class="actions">
+            <a class="btn primary" href="/pages/register.html">Try SilentSync</a>
+            <a class="btn secondary" href="/pages/admin.html">Admin Panel</a>
+            <a class="btn secondary" href="mailto:andersondavikrause@gmail.com">Contact Author</a>
+        </div>
+
+        <div class="grid">
+            <div class="step">
+                <strong>1. Create a room</strong>
+                The admin creates a room and opens the screen view.
+            </div>
+
+            <div class="step">
+                <strong>2. Upload media</strong>
+                Video is processed and audio is extracted with FFmpeg.
+            </div>
+
+            <div class="step">
+                <strong>3. Join with mobile</strong>
+                Users scan the QR code and receive synchronized audio.
+            </div>
+        </div>
+
+        <div class="footer">
+            Developed by Anderson Davi Krause · ASP.NET Core · SignalR · FFmpeg · PostgreSQL
+        </div>
+    </section>
+</main>
+
+</body>
+</html>
