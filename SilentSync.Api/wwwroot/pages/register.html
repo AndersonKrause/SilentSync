@@ -35,7 +35,7 @@
             <h1 data-i18n="login">Entrar</h1>
 
             <p class="subtitle" data-i18n="loginSubtitle">
-                Acesse sua conta para continuar
+                Acesse a sua conta para continuar
             </p>
 
             <label for="loginEmail" data-i18n="email">Email</label>
@@ -50,13 +50,23 @@
 
             <label for="loginPassword" data-i18n="password">Senha</label>
 
-            <input
-                    id="loginPassword"
-                    type="password"
-                    placeholder="Digite sua senha"
-                    data-i18n-placeholder="passwordPlaceholder"
-                    autocomplete="current-password"
-            />
+            <div class="password-wrapper">
+                <input
+                        id="loginPassword"
+                        type="password"
+                        placeholder="Digite sua senha"
+                        data-i18n-placeholder="passwordPlaceholder"
+                        autocomplete="current-password"
+                />
+
+                <button
+                        type="button"
+                        id="toggleLoginPassword"
+                        class="password-toggle"
+                        aria-label="Show password">
+                    👁
+                </button>
+            </div>
 
             <button id="loginBtn" class="primary-btn" type="button" data-i18n="login">
                 Entrar

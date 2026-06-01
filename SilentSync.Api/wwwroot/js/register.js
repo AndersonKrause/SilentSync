@@ -402,7 +402,24 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("i18n not loaded!");
         return;
     }
-    
+
+    const loginPassword = document.getElementById("loginPassword");
+    const toggleLoginPassword = document.getElementById("toggleLoginPassword");
+
+    if (loginPassword && toggleLoginPassword) {
+        toggleLoginPassword.addEventListener("click", () => {
+            const isVisible = loginPassword.type === "text";
+
+            loginPassword.type = isVisible
+                ? "password"
+                : "text";
+
+            toggleLoginPassword.textContent = isVisible
+                ? "👁"
+                : "🙈";
+        });
+    }
+
     showView("login");
     setStatus(t("statusReady"));
 });
