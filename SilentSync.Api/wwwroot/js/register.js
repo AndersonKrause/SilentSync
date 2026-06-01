@@ -403,23 +403,36 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    const loginPassword = document.getElementById("loginPassword");
-    const toggleLoginPassword = document.getElementById("toggleLoginPassword");
+    // Login
+    setupPasswordToggle("loginPassword", "toggleLoginPassword");
 
-    if (loginPassword && toggleLoginPassword) {
-        toggleLoginPassword.addEventListener("click", () => {
-            const isVisible = loginPassword.type === "text";
+    // Create Account
+    setupPasswordToggle("createPw1", "toggleCreatePw1");
+    setupPasswordToggle("createPw2", "toggleCreatePw2");
 
-            loginPassword.type = isVisible
-                ? "password"
-                : "text";
-
-            toggleLoginPassword.textContent = isVisible
-                ? "👁"
-                : "🙈";
-        });
-    }
+    // Forgot Password
+    setupPasswordToggle("forgotPw1", "toggleForgotPw1");
+    setupPasswordToggle("forgotPw2", "toggleForgotPw2");
 
     showView("login");
     setStatus(t("statusReady"));
 });
+
+function setupPasswordToggle(inputId, buttonId) {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+
+    if (!input || !button) return;
+
+    button.addEventListener("click", () => {
+        const visible = input.type === "text";
+
+        input.type = visible
+            ? "password"
+            : "text";
+
+        button.textContent = visible
+            ? "👁"
+            : "🙈";
+    });
+}

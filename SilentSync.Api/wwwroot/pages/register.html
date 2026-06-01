@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>SilentSync - Register</title>
-    <link rel="stylesheet" href="../css/register.css">
+    <link rel="stylesheet" href="../css/register.css?v=3">
 </head>
 <body>
 
@@ -117,25 +117,43 @@
 
             <label for="createPw1" data-i18n="password">Senha</label>
 
-            <input
-                    id="createPw1"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    data-i18n-placeholder="newPasswordPlaceholder"
-                    autocomplete="new-password"
-            />
+            <div class="password-wrapper">
+                <input
+                        id="createPw1"
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        data-i18n-placeholder="newPasswordPlaceholder"
+                        autocomplete="new-password"
+                />
+
+                <button
+                        type="button"
+                        id="toggleCreatePw1"
+                        class="password-toggle">
+                    👁
+                </button>
+            </div>
 
             <label for="createPw2" data-i18n="confirmPassword">
                 Confirmar senha
             </label>
 
-            <input
-                    id="createPw2"
-                    type="password"
-                    placeholder="Repita a senha"
-                    data-i18n-placeholder="confirmPasswordPlaceholder"
-                    autocomplete="new-password"
-            />
+            <div class="password-wrapper">
+                <input
+                        id="createPw2"
+                        type="password"
+                        placeholder="Repita a senha"
+                        data-i18n-placeholder="confirmPasswordPlaceholder"
+                        autocomplete="new-password"
+                />
+
+                <button
+                        type="button"
+                        id="toggleCreatePw2"
+                        class="password-toggle">
+                    👁
+                </button>
+            </div>
 
             <button
                     id="createStartBtn"
@@ -275,25 +293,43 @@
                 Nova senha
             </label>
 
-            <input
-                    id="forgotPw1"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    data-i18n-placeholder="newPasswordPlaceholder"
-                    autocomplete="new-password"
-            />
+            <div class="password-wrapper">
+                <input
+                        id="forgotPw1"
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        data-i18n-placeholder="newPasswordPlaceholder"
+                        autocomplete="new-password"
+                />
+
+                <button
+                        type="button"
+                        id="toggleForgotPw1"
+                        class="password-toggle">
+                    👁
+                </button>
+            </div>
 
             <label for="forgotPw2" data-i18n="confirmNewPassword">
                 Confirmar nova senha
             </label>
 
-            <input
-                    id="forgotPw2"
-                    type="password"
-                    placeholder="Repita a senha"
-                    data-i18n-placeholder="confirmNewPasswordPlaceholder"
-                    autocomplete="new-password"
-            />
+            <div class="password-wrapper">
+                <input
+                        id="forgotPw2"
+                        type="password"
+                        placeholder="Repita a senha"
+                        data-i18n-placeholder="confirmNewPasswordPlaceholder"
+                        autocomplete="new-password"
+                />
+
+                <button
+                        type="button"
+                        id="toggleForgotPw2"
+                        class="password-toggle">
+                    👁
+                </button>
+            </div>
 
             <button
                     id="forgotResetBtn"
