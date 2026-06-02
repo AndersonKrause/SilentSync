@@ -61,7 +61,10 @@ public class LoginCodeService : ILoginCodeService
         await _email.SendAsync(
             emailAddr,
             "SilentSync verification code",
-            $"Your code is: {code} (valid for 10 minutes)");
+            $"Your code is: {code} (valid for 10 minutes) \n\n" +
+            $" If you requested this code, enter it in SilentSync to continue.\n" +
+            $"If you did not request this code, you can safely ignore this email. \n" +
+            $"No account will be activated until the verification code is confirmed.");
     }
 
 

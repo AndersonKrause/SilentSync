@@ -429,6 +429,33 @@ async function connectSignalR(roomCode, memberId) {
     await applyState(state, "pull");
 }
 
+const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+
+deleteAccountBtn?.addEventListener("click", async () => {
+    const ok = confirm(t("confirmDeleteAccount"));
+
+    if (!ok) return;
+
+    try {
+        await api("/api/auth/delete/user", {
+            method: "DELETE",
+            auth: true
+        });
+
+        localStorage.removeItem("ss_token");
+        localStorage.removeItem("ss_roomCode");
+        localStorage.removeItem("ss_displayName");
+
+        alert(t("accountDeleted"));
+
+        location.href = "/pages/register.html";
+    } catch (e) {
+        alert(tf("failedDeleteAccount", {
+            reason: e.message || String(e)
+        }));
+    }
+});
+
 // ========= Init =========
 (function init() {
     const qsRoom = getRoomFromQuery();

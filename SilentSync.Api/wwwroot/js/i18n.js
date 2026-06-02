@@ -96,6 +96,10 @@
         autoplayBlocked: "autoplay bloqueado:",
         manualPlayOk: "play manual OK",
         manualPlayFailed: "play manual falhou:",
+        deleteMyAccount: "Excluir minha conta",
+        confirmDeleteAccount: "Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.",
+        accountDeleted: "Sua conta foi excluída.",
+        failedDeleteAccount: "Falha ao excluir conta: {reason}",
 
         // ===== ADMIN / CONTROLLER =====
         failedLoadCurrentUser: "Falha ao carregar o usuário atual.",
@@ -266,6 +270,10 @@
         autoplayBlocked: "autoplay blocked:",
         manualPlayOk: "manual play OK",
         manualPlayFailed: "manual play failed:",
+        deleteMyAccount: "Delete my account",
+        confirmDeleteAccount: "Are you sure you want to delete your account? This action cannot be undone.",
+        accountDeleted: "Your account has been deleted.",
+        failedDeleteAccount: "Failed to delete account: {reason}",
 
         failedLoadCurrentUser: "Failed to load current user.",
         userInfoText: "Email: {email}, Role: {role}",
@@ -435,6 +443,11 @@
         autoplayBlocked: "Autoplay blockiert:",
         manualPlayOk: "manuelles Abspielen OK",
         manualPlayFailed: "manuelles Abspielen fehlgeschlagen:",
+        
+        deleteMyAccount: "Konto löschen",
+        confirmDeleteAccount: "Sind Sie sicher, dass Sie Ihr Konto löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+        accountDeleted: "Ihr Konto wurde gelöscht.",
+        failedDeleteAccount: "Konto konnte nicht gelöscht werden: {reason}",
 
         failedLoadCurrentUser: "Benutzer konnte nicht geladen werden.",
         userInfoText: "E-Mail: {email}, Rolle: {role}",
