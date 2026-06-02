@@ -17,13 +17,6 @@ public class AuthController : ControllerBase
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
     }
 
-    //public record RegisterStartRequest(string Email, string Password);
-    //public record RegisterCompleteRequest(string Email, string Code);
-   //public record LoginRequest(string Email, string Password);
-    //public record RequestCodeRequest(string Email);
-    //public record ForgotPasswordRequest(string Email);
-    //public record ResetPasswordRequest(string Email, string Code, string NewPassword);
-
     [HttpPost("register-start")]
     public async Task<IActionResult> RegisterStart([FromBody] RegisterStartRequest req)
     {
