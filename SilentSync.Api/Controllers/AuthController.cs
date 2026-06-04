@@ -171,12 +171,19 @@ public class AuthController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "host,admin")]
+    [Authorize(Roles = "admin")]
     [HttpDelete("delete-by-email")]
     public async Task<IActionResult> DeleteUserByEmail([FromQuery] string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest("Email is required.");
+        
+        var currentAdminEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+        if (!string.IsNullOrEmpty(currentAdminEmail) && 
+            currentAdminEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("You cannot delete your own account.");
+        }
 
         try
         {
@@ -195,5 +202,46 @@ public class AuthController : ControllerBase
         {
             return Conflict(ex.Message);
         }
+    }
+    
+    [Authorize(Roles = "admin")]
+    [HttpPut("change-role")]
+    public async Task<IActionResult> ChangeRole(
+        [FromBody] ChangeRoleRequest request)
+    {
+        var currentAdminEmail =
+            User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? User.FindFirst("email")?.Value
+            ?? "";
+
+        try
+        {
+            await _authService.ChangeRoleAsync(
+                request.Email,
+                request.Role,
+                currentAdminEmail);
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
+    }
+    
+    [Authorize(Roles = "admin")]
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await _authService.GetUsersAsync();
+        return Ok(users);
     }
 }

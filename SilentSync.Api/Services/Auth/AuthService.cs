@@ -210,4 +210,52 @@ public class AuthService : IAuthService
         await _db.SaveChangesAsync();
     }
     
+    public async Task ChangeRoleAsync(
+        string email,
+        string role,
+        string currentAdminEmail)
+    {
+        var emailAddr = NormEmail(email);
+        role = (role ?? "").Trim().ToLowerInvariant();
+
+        var allowedRoles = new[]
+        {
+            "user",
+            "host",
+            "admin"
+        };
+
+        if (!allowedRoles.Contains(role))
+            throw new ArgumentException("Invalid role.");
+
+        var user = await _db.Users
+            .SingleOrDefaultAsync(u => u.Email == emailAddr);
+
+        if (user is null)
+            throw new KeyNotFoundException("User not found.");
+
+        if (string.Equals(
+                emailAddr,
+                currentAdminEmail,
+                StringComparison.OrdinalIgnoreCase)
+            && role != "admin")
+        {
+            throw new InvalidOperationException(
+                "You cannot remove your own admin role.");
+        }
+
+        user.Role = role;
+
+        await _db.SaveChangesAsync();
+    }
+    
+    public async Task<List<UserListItemDto>> GetUsersAsync()
+    {
+        return await _db.Users
+            .OrderBy(u => u.Email)
+            .Select(u => new UserListItemDto(
+                u.Email,
+                u.Role))
+            .ToListAsync();
+    }
 }
