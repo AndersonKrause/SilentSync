@@ -13,4 +13,6 @@ public interface IAuthService
     Task DeleteUserAsync(Guid userId);
     Task<object> GetMeAsync(Guid userId);
     Task DeleteUserByEmailAsync(String email);
+    Task ChangeRoleAsync(string email, string role, string currentAdminEmail);
+    Task<List<UserListItemDto>> GetUsersAsync();
 }
