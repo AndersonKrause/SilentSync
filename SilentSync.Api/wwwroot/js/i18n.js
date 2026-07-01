@@ -174,7 +174,24 @@
         noPermissionListRooms: "Você não tem permissão para listar rooms.",
         failedLoadRooms: "Falha ao carregar rooms.",
         noPermissionDeleteRoom: "Você não tem permissão para excluir esta room.",
-        failedDeleteRoom: "Falha ao excluir room."
+        failedDeleteRoom: "Falha ao excluir room.",
+        userAdministration: "Administração de usuários",
+        deleteUserHint: "Exclua uma conta pelo email. Esta ação não pode ser desfeita.",
+        userEmail: "Email do usuário",
+        userEmailPlaceholder: "usuario@exemplo.com",
+        deleteUser: "Excluir usuário",
+        confirmDeleteUser: "Excluir o usuário {email}?",
+        userDeleted: "Usuário excluído com sucesso.",
+        failedDeleteUser: "Falha ao excluir usuário.",
+        fillUserEmail: "Preencha o email do usuário",userAdministration: "Administração de usuários",
+        deleteUserHint: "Exclua uma conta pelo email. Esta ação não pode ser desfeita.",
+        userEmail: "Email do usuário",
+        userEmailPlaceholder: "usuario@exemplo.com",
+        deleteUser: "Excluir usuário",
+        confirmDeleteUser: "Excluir o usuário {email}?",
+        userDeleted: "Usuário excluído com sucesso.",
+        failedDeleteUser: "Falha ao excluir usuário.",
+        fillUserEmail: "Preencha o email do usuário",
     },
 
     en: {
@@ -347,7 +364,16 @@
         noPermissionListRooms: "You do not have permission to list rooms.",
         failedLoadRooms: "Failed to load rooms.",
         noPermissionDeleteRoom: "You do not have permission to delete this room.",
-        failedDeleteRoom: "Failed to delete room."
+        failedDeleteRoom: "Failed to delete room.",
+        userAdministration: "User Administration",
+        deleteUserHint: "Delete a user account by email. This action cannot be undone.",
+        userEmail: "User email",
+        userEmailPlaceholder: "user@example.com",
+        deleteUser: "Delete User",
+        confirmDeleteUser: "Delete user {email}?",
+        userDeleted: "User deleted successfully.",
+        failedDeleteUser: "Failed to delete user.",
+        fillUserEmail: "Enter the user email",
     },
 
     de: {
@@ -521,7 +547,16 @@
         noPermissionListRooms: "Sie haben keine Berechtigung, Räume aufzulisten.",
         failedLoadRooms: "Räume konnten nicht geladen werden.",
         noPermissionDeleteRoom: "Sie haben keine Berechtigung, diesen Raum zu löschen.",
-        failedDeleteRoom: "Raum konnte nicht gelöscht werden."
+        failedDeleteRoom: "Raum konnte nicht gelöscht werden.",
+        userAdministration: "Benutzerverwaltung",
+        deleteUserHint: "Löschen Sie ein Benutzerkonto per E-Mail. Diese Aktion kann nicht rückgängig gemacht werden.",
+        userEmail: "Benutzer-E-Mail",
+        userEmailPlaceholder: "benutzer@beispiel.com",
+        deleteUser: "Benutzer löschen",
+        confirmDeleteUser: "Benutzer {email} löschen?",
+        userDeleted: "Benutzer erfolgreich gelöscht.",
+        failedDeleteUser: "Benutzer konnte nicht gelöscht werden.",
+        fillUserEmail: "Benutzer-E-Mail eingeben"
     }
 };
 

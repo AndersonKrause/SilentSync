@@ -592,6 +592,46 @@ document.getElementById("seekBtn").onclick = async () => {
     video.currentTime = v / 1000;
     await scheduleSend("seekBtn");
 };
+document.getElementById("deleteUserBtn")?.addEventListener("click", async () => {
+    const input = document.getElementById("deleteUserEmail");
+    const info = document.getElementById("deleteUserInfo");
+
+    const email = input?.value.trim().toLowerCase();
+
+    if (!email) {
+        alert(t("fillUserEmail"));
+        return;
+    }
+
+    if (!confirm(tf("confirmDeleteUser", { email }))) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/auth/delete-by-email?email=${encodeURIComponent(email)}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: "Bearer " + localStorage.getItem("ss_token")
+            }
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        if (info) {
+            info.innerHTML = `<span class="ok">${t("userDeleted")}</span>`;
+        }
+
+        input.value = "";
+    } catch (e) {
+        if (info) {
+            info.innerHTML = `<span class="err">${t("failedDeleteUser")}: ${e.message}</span>`;
+        }
+    }
+});
+
 
 video.addEventListener("play", () => scheduleSend("play"));
 video.addEventListener("pause", () => scheduleSend("pause"));

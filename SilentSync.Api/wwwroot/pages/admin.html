@@ -117,6 +117,36 @@
             </section>
         </div>
 
+        <!-- DELETE USER -->
+
+        <section class="card danger-section">
+            <h2 data-i18n="userAdministration">User Administration</h2>
+
+            <p class="small muted" data-i18n="deleteUserHint">
+                Delete a user account by email. This action cannot be undone.
+            </p>
+
+            <label for="deleteUserEmail" data-i18n="userEmail">User email</label>
+
+            <div class="input-group">
+                <input
+                        id="deleteUserEmail"
+                        type="email"
+                        placeholder="user@example.com"
+                        data-i18n-placeholder="userEmailPlaceholder" />
+
+                <button
+                        id="deleteUserBtn"
+                        class="danger-btn"
+                        type="button"
+                        data-i18n="deleteUser">
+                    Delete User
+                </button>
+            </div>
+
+            <div id="deleteUserInfo" class="small"></div>
+        </section>
+
         <video id="video" controls muted playsinline></video>
         <pre id="log"></pre>
 
